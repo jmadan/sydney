@@ -4,6 +4,7 @@ const cheerio = require('cheerio');
 const natural = require('natural');
 const textract = require('textract');
 const MongoDB = require('./mongodb');
+const ObjectID = require('mongodb').ObjectID;
 
 const lancasterStemmer = natural.LancasterStemmer;
 
@@ -114,7 +115,7 @@ let updateProvidersTime = provider => {
   return new Promise(function(resolve) {
     MongoDB.updateDocument(
       'feedproviders',
-      { _id: ObjectId(provider._id) },
+      { _id: ObjectID(provider._id) },
       { $set: { lastPulled: new Date().toISOString() } }
     ).then(response => {
       resolve(response);
@@ -152,10 +153,10 @@ let makeRequests = item => {
   return new Promise((resolve, reject) => {
     textract.fromUrl(item.url, function(error, text) {
       if (text) {
-        item.stemwords = lancasterStemmer.tokenizeAndStem(text);
-        item.itembody = text
-          .replace('/s+/gm', ' ')
-          .replace('([^a-zA-Z])+', ' ');
+        item.stemwords = lancasterStemmer.tokenizeAndStem(
+          text.replace(/[0-9]/g, '')
+        );
+        item.itembody = text.replace(/\s+/gm, ' ').replace(/\W/g, ' ');
       } else {
         item.stemwords = '';
         item.itembody = '';

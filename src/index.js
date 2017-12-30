@@ -5,6 +5,7 @@ const feed = require('./feed');
 const initialSetup = require('./initialSetup');
 const synaptic = require('./synaptic');
 const MongoDB = require('./mongodb');
+const ObjectID = require('mongodb').ObjectID;
 
 let initialjobs = new CronJob({
   cronTime: '5 0 * 1 *',
@@ -72,11 +73,12 @@ let saveClassifiedDocs = doc => {
         status: doc.status
       }
     }
-  ).then(updatedDoc => {
+  ).then(result => {
     console.log(
-      updatedDoc.value._id +
-        ' - update ' +
-        JSON.stringify(updatedDoc.lastErrorObject.updatedExisting)
+      'Document Updated:-  ',
+      result.value._id,
+      result.value.category,
+      result.lastErrorObject.updatedExisting
     );
   });
 };

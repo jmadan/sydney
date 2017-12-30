@@ -1,7 +1,7 @@
 'use strict';
 
 const MongoClient = require('mongodb');
-const ObjectId = MongoClient.ObjectId;
+const ObjectID = MongoClient.ObjectID;
 
 const DBURI = process.env.MONGODB_URI;
 
@@ -54,7 +54,7 @@ let deleteDocument = (coll, doc) => {
       db
         .db('manhattan')
         .collection(coll)
-        .deleteOne({ _id: ObjectId(doc._id) }, (err, result) => {
+        .deleteOne({ _id: ObjectID(doc._id) }, (err, result) => {
           db.close();
           if (err) {
             reject(err);
@@ -74,13 +74,18 @@ let updateDocument = (coll, findQuery, updateQuery) => {
       db
         .db('manhattan')
         .collection(coll)
-        .updateOne(findQuery, updateQuery, { new: true }, (err, result) => {
-          db.close();
-          if (err) {
-            reject(err);
+        .findOneAndUpdate(
+          findQuery,
+          updateQuery,
+          { returnNewDocument: true },
+          (err, result) => {
+            db.close();
+            if (err) {
+              reject(err);
+            }
+            resolve(result);
           }
-          resolve(result);
-        });
+        );
     });
   });
 };
