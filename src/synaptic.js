@@ -1,5 +1,5 @@
 const synaptic = require('synaptic');
-const trainingdata = require('./trainingdata');
+const trainingdata = require('./trainingData');
 const Redis = require('./redis');
 const Mongo = require('./mongodb');
 
