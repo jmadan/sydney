@@ -4,7 +4,7 @@ const CronJob = require('cron').CronJob;
 const feed = require('./feed');
 const initialSetup = require('./initialSetup');
 const synaptic = require('./synaptic');
-// const article = require('../article');
+const MongoDB = require('./mongodb');
 
 let initialjobs = new CronJob({
   cronTime: '5 0 * 1 *',
@@ -20,7 +20,7 @@ let initialjobs = new CronJob({
       })
       .catch(e => console.log(e));
   },
-  start: true
+  start: false
 });
 
 let fetchInitialFeeds = new CronJob({
@@ -42,7 +42,7 @@ let fetchInitialFeeds = new CronJob({
         });
       });
   },
-  start: true
+  start: false
 });
 
 let fetchFeedContents = new CronJob({
@@ -59,7 +59,7 @@ let fetchFeedContents = new CronJob({
       });
     });
   },
-  start: true
+  start: false
 });
 
 let saveClassifiedDocs = doc => {
@@ -95,7 +95,7 @@ let classifyDocs = new CronJob({
       })
       .catch(e => console.log(e));
   },
-  start: true
+  start: false
 });
 
 let synapticTraining = new CronJob({
@@ -104,15 +104,15 @@ let synapticTraining = new CronJob({
     console.log('Triaing the Network Now.....');
     synaptic.trainNetwork();
   },
-  start: true
+  start: false
 });
 
 function main() {
-  initialjobs.start();
-  fetchInitialFeeds.start();
+  // initialjobs.start();
+  // fetchInitialFeeds.start();
   fetchFeedContents.start();
-  classifyDocs.start();
-  synapticTraining.start();
+  // classifyDocs.start();
+  // synapticTraining.start();
   console.log('Started them all....');
 }
 
