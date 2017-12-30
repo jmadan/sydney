@@ -1,0 +1,23 @@
+{
+  "name": "sydney",
+  "version": "1.0.0",
+  "description": "cron jobs",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "Jasdep Madan",
+  "license": "ISC",
+  "dependencies": {
+    "cheerio": "^1.0.0-rc.2",
+    "cron": "^1.3.0",
+    "mongodb": "^3.0.1",
+    "natural": "^0.5.4",
+    "redis": "^2.8.0",
+    "request": "^2.83.0",
+    "request-promise": "^4.2.2",
+    "synaptic": "^1.1.4",
+    "textract": "^2.2.0",
+    "url": "^0.11.0"
+  }
+}
