@@ -108,11 +108,11 @@ let synapticTraining = new CronJob({
 });
 
 function main() {
-  // initialjobs.start();
-  // fetchInitialFeeds.start();
+  initialjobs.start();
+  fetchInitialFeeds.start();
   fetchFeedContents.start();
-  // classifyDocs.start();
-  // synapticTraining.start();
+  classifyDocs.start();
+  synapticTraining.start();
   console.log('Started them all....');
 }
 
