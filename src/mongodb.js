@@ -1,7 +1,7 @@
 'use strict';
 
 const MongoClient = require('mongodb');
-const ObjectID = MongoClient.ObjectID;
+const ObjectId = MongoClient.ObjectId;
 
 const DBURI = process.env.MONGODB_URI;
 
@@ -11,13 +11,16 @@ let insertDocuments = (coll, docs) => {
       if (err) {
         reject(err);
       }
-      db.collection(coll).insertMany(docs, (err, result) => {
-        db.close();
-        if (err) {
-          reject(err);
-        }
-        resolve(result);
-      });
+      db
+        .db('manhattan')
+        .collection(coll)
+        .insertMany(docs, (err, result) => {
+          db.close();
+          if (err) {
+            reject(err);
+          }
+          resolve(result);
+        });
     });
   });
 };
@@ -28,13 +31,16 @@ let insertDocument = (coll, doc) => {
       if (err) {
         reject(err);
       }
-      db.collection(coll).insertOne(doc, (err, result) => {
-        db.close();
-        if (err) {
-          reject(err);
-        }
-        resolve(result);
-      });
+      db
+        .db('manhattan')
+        .collection(coll)
+        .insertOne(doc, (err, result) => {
+          db.close();
+          if (err) {
+            reject(err);
+          }
+          resolve(result);
+        });
     });
   });
 };
@@ -46,6 +52,7 @@ let deleteDocument = (coll, doc) => {
         reject(err);
       }
       db
+        .db('manhattan')
         .collection(coll)
         .deleteOne({ _id: ObjectId(doc._id) }, (err, result) => {
           db.close();
@@ -65,9 +72,10 @@ let updateDocument = (coll, findQuery, updateQuery) => {
         reject(err);
       }
       db
+        .db('manhattan')
         .collection(coll)
         .updateOne(findQuery, updateQuery, { new: true }, (err, result) => {
-          db.close;
+          db.close();
           if (err) {
             reject(err);
           }
@@ -84,12 +92,14 @@ let getDocuments = (coll, query) => {
         reject(err);
       }
       db
+        .db('manhattan')
         .collection(coll)
         .find(query)
         .toArray((err, docs) => {
           if (err) {
             reject(err);
           }
+          db.close();
           resolve(docs);
         });
     });
@@ -103,6 +113,7 @@ let getDocumentsWithLimit = (coll, query, limit) => {
         reject(err);
       }
       db
+        .db('manhattan')
         .collection(coll)
         .find(query)
         .limit(parseInt(limit))
@@ -110,6 +121,7 @@ let getDocumentsWithLimit = (coll, query, limit) => {
           if (err) {
             reject(err);
           }
+          db.close();
           resolve(docs);
         });
     });
