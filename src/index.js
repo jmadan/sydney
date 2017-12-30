@@ -90,10 +90,18 @@ let classifyDocs = new CronJob({
     feed
       .fetchItems('feeditems', { status: 'unclassified' }, 1)
       .then(doc => {
-        return synaptic.classifyDocs(doc[0]);
+        if (doc.length > 0) {
+          return synaptic.classifyDocs(doc[0]);
+        } else {
+          return null;
+        }
       })
       .then(item => {
-        saveClassifiedDocs(item);
+        if (item) {
+          saveClassifiedDocs(item);
+        } else {
+          console.log('Nothing to Classify...');
+        }
       })
       .catch(e => console.log(e));
   },
