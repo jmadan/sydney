@@ -112,20 +112,18 @@ let returnNew = async (val, index, arr) => {
 };
 
 let updateProvidersTime = provider => {
-  return new Promise(function(resolve) {
-    MongoDB.updateDocument(
-      'feedproviders',
-      { _id: ObjectID(provider._id) },
-      { $set: { lastPulled: new Date().toISOString() } }
-    ).then(response => {
-      resolve(response);
-    });
+  MongoDB.updateDocument(
+    'feedproviders',
+    { _id: ObjectID(provider._id) },
+    { $set: { lastPulled: new Date().toISOString() } }
+  ).then(response => {
+    console.log('response after time update: ', response);
   });
 };
 
 let getProviderFeed = async providers => {
   let flist = await Promise.all(providers.list.map(returnNew));
-  await Promise.all(providers.list.forEach(updateProvidersTime));
+  providers.list.forEach(updateProvidersTime);
   return flist;
 };
 
