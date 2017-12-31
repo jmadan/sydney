@@ -187,7 +187,7 @@ let updateAndMoveFeedItem = item => {
       stemwords: item.stemwords
     })
       .then(response => {
-        MongoDB.deleteDocument(item)
+        MongoDB.deleteDocument('feed', item)
           .then(response => {
             resolve(response);
           })

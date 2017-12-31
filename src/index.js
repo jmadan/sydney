@@ -25,7 +25,7 @@ let initialjobs = new CronJob({
 });
 
 let fetchInitialFeeds = new CronJob({
-  cronTime: '40 12 * * *',
+  cronTime: '00 13 * * *',
   onTick: () => {
     console.log('Fetching RSS feeds....................');
     feed
