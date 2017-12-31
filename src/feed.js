@@ -12,7 +12,7 @@ const DBURI = process.env.MONGODB_URI;
 
 let getRSSFeedProviders = () => {
   return new Promise(function(resolve) {
-    Mongodb.getDocuments('feedproviders', {
+    MongoDB.getDocuments('feedproviders', {
       status: { $in: ['active', 'Active'] }
     }).then(providerList => {
       resolve({ list: providerList });

@@ -25,8 +25,9 @@ let initialjobs = new CronJob({
 });
 
 let fetchInitialFeeds = new CronJob({
-  cronTime: '0 5 * * *',
+  cronTime: '10 11 * * *',
   onTick: () => {
+    console.log('Fetching RSS feeds....................');
     feed
       .getRSSFeedProviders()
       .then(providers => {
@@ -69,7 +70,7 @@ let saveClassifiedDocs = doc => {
     { _id: ObjectID(doc._id) },
     {
       $set: {
-        category: doc.category,
+        output: doc.category,
         status: doc.status
       }
     }
@@ -88,7 +89,7 @@ let classifyDocs = new CronJob({
   onTick: () => {
     console.log('Initiating article classification ...');
     feed
-      .fetchItems('feeditems', { status: 'unclassified' }, 1)
+      .fetchItems('feeditems', { status: 'classified' }, 1)
       .then(doc => {
         if (doc.length > 0) {
           return synaptic.classifyDocs(doc[0]);
@@ -122,7 +123,7 @@ function main() {
   fetchInitialFeeds.start();
   fetchFeedContents.start();
   classifyDocs.start();
-  synapticTraining.start();
+  // synapticTraining.start();
   console.log('Started them all....');
 }
 
