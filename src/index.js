@@ -109,6 +109,46 @@ let classifyDocs = new CronJob({
   start: false
 });
 
+let classifyDocsBasedOnTopic = new CronJob({
+  cronTime: '*/3 * * * *', //Seconds: 0-59, Minutes: 0-59, Hours: 0-23, Day of Month: 1-31, Months: 0-11 ,Day of Week: 0-6
+  onTick: async () => {
+    console.log('Initiating article classification based on Topic...');
+    MongoDB.getDocuments('categories', { parent: { $exists: false } })
+      .then(async cats => {
+        let docs = await feed.fetchItems(
+          'feeditems',
+          { $and: [{ status: 'unclassified' }, { topic: { $ne: 'All' } }] },
+          50
+        );
+        return docs.map(d => {
+          if (cats.find(c => c.name === d.topic)) {
+            d.parentcat = cats.find(c => {
+              if (c.name === d.topic) {
+                return c;
+              }
+            });
+          }
+          return d;
+        });
+      })
+      .then(documents => {
+        documents.map(d => {
+          if (d.parentcat) {
+            MongoDB.updateDocument(
+              'feeditems',
+              { _id: ObjectID(d._id) },
+              { $set: { status: 'classified', parentcat: d.parentcat } }
+            )
+              .then(response => console.log(response.value._id, response.ok))
+              .catch(err => console.log(err));
+          }
+        });
+      })
+      .catch(e => console.log(e));
+  },
+  start: true
+});
+
 let synapticTraining = new CronJob({
   cronTime: '01 11 * 1 *',
   onTick: () => {
@@ -122,7 +162,8 @@ function main() {
   initialjobs.start();
   fetchInitialFeeds.start();
   fetchFeedContents.start();
-  classifyDocs.start();
+  classifyDocs.stop();
+  classifyDocsBasedOnTopic.start();
   // synapticTraining.start();
   console.log('Started them all....');
 }
