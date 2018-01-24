@@ -25,7 +25,7 @@ let initialjobs = new CronJob({
 });
 
 let fetchInitialFeeds = new CronJob({
-  cronTime: '10 11 * * *',
+  cronTime: '00 13 * * *',
   onTick: () => {
     console.log('Fetching RSS feeds....................');
     feed
@@ -162,7 +162,7 @@ function main() {
   initialjobs.start();
   fetchInitialFeeds.start();
   fetchFeedContents.start();
-  classifyDocs.stop();
+  // classifyDocs.stop();
   classifyDocsBasedOnTopic.start();
   // synapticTraining.start();
   console.log('Started them all....');
