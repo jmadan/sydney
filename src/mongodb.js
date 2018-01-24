@@ -77,7 +77,7 @@ let updateDocument = (coll, findQuery, updateQuery) => {
         .findOneAndUpdate(
           findQuery,
           updateQuery,
-          { returnNewDocument: true },
+          { returnOriginal: false },
           (err, result) => {
             db.close();
             if (err) {

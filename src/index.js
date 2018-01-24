@@ -6,6 +6,7 @@ const initialSetup = require('./initialSetup');
 const synaptic = require('./synaptic');
 const MongoDB = require('./mongodb');
 const ObjectID = require('mongodb').ObjectID;
+const Neo4j = require('./neo4j');
 
 let initialjobs = new CronJob({
   cronTime: '5 0 * 1 *',
@@ -118,8 +119,9 @@ let classifyDocsBasedOnTopic = new CronJob({
         let docs = await feed.fetchItems(
           'feeditems',
           { $and: [{ status: 'unclassified' }, { topic: { $ne: 'All' } }] },
-          50
+          1
         );
+        console.log('search result docs: ', docs.length);
         return docs.map(d => {
           if (cats.find(c => c.name === d.topic)) {
             d.parentcat = cats.find(c => {
@@ -139,7 +141,13 @@ let classifyDocsBasedOnTopic = new CronJob({
               { _id: ObjectID(d._id) },
               { $set: { status: 'classified', parentcat: d.parentcat } }
             )
-              .then(response => console.log(response.value._id, response.ok))
+              .then(response => {
+                console.log(response.value._id);
+                Neo4j.createArticle(response.value).then(result => {
+                  console.log('Article created...', result.msg);
+                  Neo4j.articleCategoryRelationship(response.value);
+                });
+              })
               .catch(err => console.log(err));
           }
         });
