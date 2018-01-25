@@ -119,7 +119,7 @@ let classifyDocsBasedOnTopic = new CronJob({
         let docs = await feed.fetchItems(
           'feeditems',
           { $and: [{ status: 'unclassified' }, { topic: { $ne: 'All' } }] },
-          1
+          50
         );
         console.log('search result docs: ', docs.length);
         return docs.map(d => {
@@ -142,7 +142,7 @@ let classifyDocsBasedOnTopic = new CronJob({
               { $set: { status: 'classified', parentcat: d.parentcat } }
             )
               .then(response => {
-                console.log(response.value._id);
+                console.log(response.value._id, response.value.topic);
                 Neo4j.createArticle(response.value).then(result => {
                   console.log('Article created...', result.msg);
                   Neo4j.articleCategoryRelationship(response.value);
