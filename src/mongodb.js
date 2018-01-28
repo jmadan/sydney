@@ -7,15 +7,15 @@ const DBURI = process.env.MONGODB_URI;
 
 let insertDocuments = (coll, docs) => {
   return new Promise((resolve, reject) => {
-    MongoClient.connect(DBURI, (err, db) => {
+    MongoClient.connect(DBURI, (err, datab) => {
       if (err) {
         reject(err);
       }
-      db
+      datab
         .db('manhattan')
         .collection(coll)
         .insertMany(docs, (err, result) => {
-          db.close();
+          datab.close();
           if (err) {
             reject(err);
           }
@@ -27,15 +27,15 @@ let insertDocuments = (coll, docs) => {
 
 let insertDocument = (coll, doc) => {
   return new Promise((resolve, reject) => {
-    MongoClient.connect(DBURI, (err, db) => {
+    MongoClient.connect(DBURI, (err, datab) => {
       if (err) {
         reject(err);
       }
-      db
+      datab
         .db('manhattan')
         .collection(coll)
         .insertOne(doc, (err, result) => {
-          db.close();
+          datab.close();
           if (err) {
             reject(err);
           }
@@ -47,15 +47,15 @@ let insertDocument = (coll, doc) => {
 
 let deleteDocument = (coll, doc) => {
   return new Promise((resolve, reject) => {
-    MongoClient.connect(DBURI, (err, db) => {
+    MongoClient.connect(DBURI, (err, datab) => {
       if (err) {
         reject(err);
       }
-      db
+      datab
         .db('manhattan')
         .collection(coll)
         .deleteOne({ _id: ObjectID(doc._id) }, (err, result) => {
-          db.close();
+          datab.close();
           if (err) {
             reject(err);
           }
@@ -67,11 +67,11 @@ let deleteDocument = (coll, doc) => {
 
 let updateDocument = (coll, findQuery, updateQuery) => {
   return new Promise((resolve, reject) => {
-    MongoClient.connect(DBURI, (err, db) => {
+    MongoClient.connect(DBURI, (err, datab) => {
       if (err) {
         reject(err);
       }
-      db
+      datab
         .db('manhattan')
         .collection(coll)
         .findOneAndUpdate(
@@ -79,7 +79,7 @@ let updateDocument = (coll, findQuery, updateQuery) => {
           updateQuery,
           { returnOriginal: false },
           (err, result) => {
-            db.close();
+            datab.close();
             if (err) {
               reject(err);
             }
@@ -92,11 +92,11 @@ let updateDocument = (coll, findQuery, updateQuery) => {
 
 let getDocuments = (coll, query) => {
   return new Promise((resolve, reject) => {
-    MongoClient.connect(DBURI, (err, db) => {
+    MongoClient.connect(DBURI, (err, datab) => {
       if (err) {
         reject(err);
       }
-      db
+      datab
         .db('manhattan')
         .collection(coll)
         .find(query)
@@ -104,7 +104,7 @@ let getDocuments = (coll, query) => {
           if (err) {
             reject(err);
           }
-          db.close();
+          datab.close();
           resolve(docs);
         });
     });
@@ -113,20 +113,20 @@ let getDocuments = (coll, query) => {
 
 let getDocumentsWithLimit = (coll, query, limit) => {
   return new Promise((resolve, reject) => {
-    MongoClient.connect(DBURI, (err, db) => {
+    MongoClient.connect(DBURI, (err, datab) => {
       if (err) {
         reject(err);
       }
-      db
+      datab
         .db('manhattan')
         .collection(coll)
         .find(query)
         .limit(parseInt(limit))
         .toArray((err, docs) => {
+          datab.close();
           if (err) {
             reject(err);
           }
-          db.close();
           resolve(docs);
         });
     });
