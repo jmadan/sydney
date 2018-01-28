@@ -133,11 +133,32 @@ let getDocumentsWithLimit = (coll, query, limit) => {
   });
 };
 
+let updateDocumentWithUpsert = (coll, findQuery, updateQuery) => {
+  return new Promise((resolve, reject) => {
+    MongoClient.connect(DBURI, (err, datab) => {
+      if (err) {
+        reject(err);
+      }
+      datab
+        .db('manhattan')
+        .collection(coll)
+        .update(findQuery, updateQuery, { upsert: true }, (err, result) => {
+          datab.close();
+          if (err) {
+            reject(err);
+          }
+          resolve(result);
+        });
+    });
+  });
+};
+
 module.exports = {
   insertDocuments,
   updateDocument,
   getDocuments,
   insertDocument,
   deleteDocument,
-  getDocumentsWithLimit
+  getDocumentsWithLimit,
+  updateDocumentWithUpsert
 };

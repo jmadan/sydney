@@ -192,21 +192,40 @@ let fetchContents = async items => {
 
 let updateAndMoveFeedItem = item => {
   return new Promise(function(resolve, reject) {
-    MongoDB.insertDocument('feeditems', {
-      url: item.url,
-      title: item.title,
-      description: item.description,
-      type: item.type,
-      keywords: item.keywords,
-      img: item.img,
-      author: item.author,
-      pubDate: item.pubDate,
-      provider: item.provider,
-      topic: item.topic,
-      category: item.category,
-      status: 'unclassified',
-      stemwords: item.stemwords
-    })
+    // MongoDB.insertDocument('feeditems', {
+    //   url: item.url,
+    //   title: item.title,
+    //   description: item.description,
+    //   type: item.type,
+    //   keywords: item.keywords,
+    //   img: item.img,
+    //   author: item.author,
+    //   pubDate: item.pubDate,
+    //   provider: item.provider,
+    //   topic: item.topic,
+    //   category: item.category,
+    //   status: 'unclassified',
+    //   stemwords: item.stemwords
+    // })
+    MongoDB.updateDocumentWithUpsert(
+      'feeditems',
+      { url: item.url },
+      {
+        url: item.url,
+        title: item.title,
+        description: item.description,
+        type: item.type,
+        keywords: item.keywords,
+        img: item.img,
+        author: item.author,
+        pubDate: item.pubDate,
+        provider: item.provider,
+        topic: item.topic,
+        category: item.category,
+        status: 'unclassified',
+        stemwords: item.stemwords
+      }
+    )
       .then(response => {
         MongoDB.deleteDocument('feed', item)
           .then(response => {
