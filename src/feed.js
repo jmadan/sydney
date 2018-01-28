@@ -149,6 +149,27 @@ let fetchItems = (coll, query, limit) => {
 
 let makeRequests = item => {
   return new Promise((resolve, reject) => {
+    rp(item.url).then(res => {
+      let $ = cheerio.load(res, {
+        withDomLvl1: true,
+        normalizeWhitespace: true,
+        xmlMode: true,
+        decodeEntities: true
+      });
+      if (item.keywords === '') {
+        if ($('meta[name="news_keywords"]').length > 0) {
+          item.keywords = $('meta[name="news_keywords"]').attr('content');
+        } else {
+          item.keywords = $('meta[name="keywords"]').attr('content');
+        }
+      }
+      if (item.author === '') {
+        item.author = $('meta[name="author"]').attr('content');
+      }
+      if (item.img === undefined) {
+        item.img = $('meta[property="og:image:url"]').attr('content');
+      }
+    });
     textract.fromUrl(item.url, function(error, text) {
       if (text) {
         item.stemwords = lancasterStemmer.tokenizeAndStem(
