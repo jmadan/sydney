@@ -180,9 +180,9 @@ let synapticTraining = new CronJob({
 });
 
 function main() {
-  // initialjobs.start();
-  // fetchInitialFeeds.start();
-  // fetchFeedContents.start();
+  initialjobs.start();
+  fetchInitialFeeds.start();
+  fetchFeedContents.start();
   // classifyDocs.stop();
   classifyDocsBasedOnTopic.start();
   // synapticTraining.start();
