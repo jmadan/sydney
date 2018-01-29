@@ -112,7 +112,7 @@ let classifyDocs = new CronJob({
 });
 
 let classifyDocsBasedOnTopic = new CronJob({
-  cronTime: '*/3 * * * *', //Seconds: 0-59, Minutes: 0-59, Hours: 0-23, Day of Month: 1-31, Months: 0-11 ,Day of Week: 0-6
+  cronTime: '*/2 * * * *', //Seconds: 0-59, Minutes: 0-59, Hours: 0-23, Day of Month: 1-31, Months: 0-11 ,Day of Week: 0-6
   onTick: async () => {
     console.log('Initiating article classification based on Topic...');
     MongoDB.getDocuments('categories', { parent: { $exists: false } })
@@ -120,7 +120,7 @@ let classifyDocsBasedOnTopic = new CronJob({
         let docs = await feed.fetchItems(
           'feeditems',
           { $and: [{ status: 'unclassified' }, { topic: { $ne: 'All' } }] },
-          25
+          20
         );
         console.log('search result docs: ', docs.length);
         return docs.map(d => {

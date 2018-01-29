@@ -273,7 +273,7 @@ let updateWithAuthorAndKeywords = item => {
             item.img = $('meta[property="og:image:url"]').attr('content');
           }
         }
-        console.log(item);
+        console.log(item._id, item.title);
         resolve(item);
       })
       .catch(err => {
