@@ -241,50 +241,47 @@ let updateAndMoveFeedItem = item => {
   });
 };
 
-//==================
-
-let fetchAndUpdate = () => {
+let updateWithAuthorAndKeywords = item => {
   return new Promise((resolve, reject) => {
-    MongoClient.connect(DBURI, (err, db) => {
-      if (err) {
-        reject(err);
-      } else {
-        db
-          .collection('feeditems')
-          .find({ status: 'classified' })
-          .toArray((err, docs) => {
-            db.close();
-            if (err) {
-              reject(err);
-            }
-            resolve(docs);
-          });
-      }
-    });
-  });
-};
-
-let tempUpdate = () => {
-  MongoClient.connect(DBURI, (err, db) => {
-    if (err) {
-      reject(err);
-    } else {
-      db
-        .collection('feeditems')
-        .updateMany(
-          { status: 'classified' },
-          { $set: { status: 'unclassified' } },
-          (err, r) => {
-            db.close();
-            if (err) {
-              console.log(err);
-            }
-            console.log(r);
+    rp(item.url)
+      .then(res => {
+        let $ = cheerio.load(res, {
+          withDomLvl1: true,
+          normalizeWhitespace: true,
+          xmlMode: true,
+          decodeEntities: true
+        });
+        if (item.provider === 'MIT Technology Review') {
+          if (item.keywords === '') {
+            item.keywords = $('meta[name="news_keywords"]').attr('content');
+            // item.keywords = $('meta[name="keywords"]').attr('content');
           }
-        );
-    }
+          if (item.author === '') {
+            item.author = $('meta[name="author"]').attr('content');
+          }
+          if (item.img === undefined) {
+            item.img = $('meta[property="og:image:url"]').attr('content');
+          }
+        } else {
+          if (item.keywords === '') {
+            item.keywords = $('meta[name="keywords"]').attr('content');
+          }
+          if (item.author === '') {
+            item.author = $('meta[name="author"]').attr('content');
+          }
+          if (item.img === undefined) {
+            item.img = $('meta[property="og:image:url"]').attr('content');
+          }
+        }
+        console.log(item);
+        resolve(item);
+      })
+      .catch(err => {
+        reject(err);
+      });
   });
 };
+//==================
 
 module.exports = {
   makeRequests,
@@ -295,5 +292,5 @@ module.exports = {
   fetchItems,
   fetchContents,
   updateAndMoveFeedItem,
-  fetchAndUpdate
+  updateWithAuthorAndKeywords
 };

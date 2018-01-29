@@ -55,6 +55,7 @@ let fetchFeedContents = new CronJob({
     feed.fetchItems('feed', { status: 'pending body' }, 10).then(result => {
       feed.fetchContents(result).then(res => {
         res.map(r => {
+          console.log(r.url, r.keywords, r.author);
           feed.updateAndMoveFeedItem(r).then(result => {
             console.log(result.result.n + ' Documents saved.');
           });
@@ -119,7 +120,7 @@ let classifyDocsBasedOnTopic = new CronJob({
         let docs = await feed.fetchItems(
           'feeditems',
           { $and: [{ status: 'unclassified' }, { topic: { $ne: 'All' } }] },
-          50
+          1
         );
         console.log('search result docs: ', docs.length);
         return docs.map(d => {
@@ -133,23 +134,35 @@ let classifyDocsBasedOnTopic = new CronJob({
           return d;
         });
       })
-      .then(documents => {
-        documents.map(d => {
-          if (d.parentcat) {
-            MongoDB.updateDocument(
-              'feeditems',
-              { _id: ObjectID(d._id) },
-              { $set: { status: 'classified', parentcat: d.parentcat } }
-            )
-              .then(response => {
-                console.log(response.value._id, response.value.topic);
-                Neo4j.createArticle(response.value).then(result => {
-                  console.log('Article created...', result.msg);
-                  Neo4j.articleCategoryRelationship(response.value);
-                });
-              })
-              .catch(err => console.log(err));
-          }
+      .then(async documents => {
+        console.log(documents[0]._id);
+        let docss = await Promise.all(
+          documents.map(feed.updateWithAuthorAndKeywords)
+        );
+        docss.map(d => {
+          MongoDB.updateDocument(
+            'feeditems',
+            { _id: ObjectID(d._id) },
+            {
+              $set: {
+                status: 'classified',
+                parentcat: d.parentcat,
+                author: d.author,
+                keywords: d.keywords,
+                img: d.img
+              }
+            }
+          )
+            .then(response => {
+              console.log(response.value._id, response.value.topic);
+              Neo4j.createArticle(response.value).then(result => {
+                Neo4j.articleAuthorRelationship(response.value);
+                Neo4j.articleProviderRelationship(response.value);
+                console.log('Article created...', result.msg);
+                Neo4j.articleCategoryRelationship(response.value);
+              });
+            })
+            .catch(err => console.log(err));
         });
       })
       .catch(e => console.log(e));
@@ -167,9 +180,9 @@ let synapticTraining = new CronJob({
 });
 
 function main() {
-  initialjobs.start();
-  fetchInitialFeeds.start();
-  fetchFeedContents.start();
+  // initialjobs.start();
+  // fetchInitialFeeds.start();
+  // fetchFeedContents.start();
   // classifyDocs.stop();
   classifyDocsBasedOnTopic.start();
   // synapticTraining.start();

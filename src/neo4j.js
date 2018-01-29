@@ -7,44 +7,90 @@ const driver = neo4j.driver(
 
 let createArticle = article => {
   const session = driver.session();
+  let query = null;
+
   return new Promise((resolve, reject) => {
-    session
-      .run(
-        'CREATE (a:ARTICLE {id: $id, title: $title, url: $url, keywords: $keywords}) \
-        MERGE (author:AUTHOR {name: $author}) \
-        MERGE (a)-[r:AUTHORED_BY]->(author) \
-        MERGE (provider:PROVIDER {name: $provider}) \
-        MERGE (a)-[ap:PUBLISHED_BY]->(provider) \
-        ON CREATE SET ap.published_on=$pubDate \
-        RETURN a',
-        {
+    if (article.keywords) {
+      query =
+        'CREATE (a:ARTICLE {id: $id, title: $title, url: $url, keywords: $keywords}) RETURN a';
+      session
+        .run(query, {
           id: article._id.toString(),
           title: article.title,
-          provider: article.provider,
-          author: article.author,
-          pubDate: article.pubDate.toString(),
           url: article.url,
           keywords: article.keywords.toString()
-        }
-      )
-      .then(result => {
-        session.close();
-        resolve({ msg: result.records[0] });
-      })
-      .catch(err => reject(err));
+        })
+        .then(result => {
+          session.close();
+          resolve({ msg: result.records[0] });
+        })
+        .catch(err => reject(err));
+    } else {
+      query = 'CREATE (a:ARTICLE {id: $id, title: $title, url: $url}) RETURN a';
+      session
+        .run(query, {
+          id: article._id.toString(),
+          title: article.title,
+          url: article.url
+        })
+        .then(result => {
+          session.close();
+          resolve({ msg: result.records[0] });
+        })
+        .catch(err => reject(err));
+    }
   });
 };
 
 let articleCategoryRelationship = article => {
   const session = driver.session();
+  let query =
+    'MERGE (a:ARTICLE {id: $id}) MERGE (c:CATEGORY {id: $categoryId}) CREATE (a)-[r:HAS_CATEGORY]->(c) RETURN r';
   session
-    .run(
-      'MATCH (a:ARTICLE {id: $id}), (c:CATEGORY {id: $parentCat}) CREATE (a)-[r:HAS_CATEGORY]->(c) RETURN a',
-      {
-        id: article._id.toString(),
-        parentCat: article.parentcat._id.toString()
-      }
-    )
+    .run(query, {
+      id: article._id.toString(),
+      categoryId: article.parentcat._id.toString()
+    })
+    .then(result => {
+      session.close();
+      console.log('Article node and Relationship created.');
+      console.log(result.records[0]);
+    })
+    .catch(err => console.log(err));
+};
+
+let articleAuthorRelationship = article => {
+  const session = driver.session();
+  let query = null;
+  if (article.author) {
+    query =
+      'MERGE (a:ARTICLE {id: $id}) MERGE (au:AUTHOR {name: $author}) CREATE (a)-[r:AUTHORED_BY]->(au) RETURN r';
+  } else {
+    query = 'MERGE (a:ARTICLE {id: $id}) RETURN a';
+  }
+  session
+    .run(query, {
+      id: article._id.toString(),
+      author: article.author.toString()
+    })
+    .then(result => {
+      session.close();
+      console.log('Article node and Relationship created.');
+      console.log(result.records[0]);
+    })
+    .catch(err => console.log(err));
+};
+
+let articleProviderRelationship = article => {
+  const session = driver.session();
+  let query =
+    'MERGE (a:ARTICLE {id: $id}) MERGE (p:PROVIDER {name: $provider}) CREATE (a)-[r:PUBLISHED_BY {pubDate: $published_date}]->(p) RETURN r';
+  session
+    .run(query, {
+      id: article._id.toString(),
+      provider: article.provider.toString(),
+      published_date: article.pubDate.toString()
+    })
     .then(result => {
       session.close();
       console.log('Article node and Relationship created.');
@@ -55,5 +101,7 @@ let articleCategoryRelationship = article => {
 
 module.exports = {
   createArticle,
-  articleCategoryRelationship
+  articleCategoryRelationship,
+  articleAuthorRelationship,
+  articleProviderRelationship
 };
