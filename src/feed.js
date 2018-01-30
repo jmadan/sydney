@@ -130,7 +130,14 @@ let getProviderFeed = async providers => {
 let saveRssFeed = items => {
   return new Promise(function(resolve, reject) {
     if (items.length > 0) {
-      MongoDB.insertDocuments('feed', items).then(response => {
+      let dateLimit = new Date();
+      dateLimit.setMonth(dateLimit.getMonth() - 2);
+      let finalItems = items.map(i => {
+        if (new Date(i.pubDate) >= dateLimit) {
+          return i;
+        }
+      });
+      MongoDB.insertDocuments('feed', finalItems).then(response => {
         resolve(response);
       });
     } else {

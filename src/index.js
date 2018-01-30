@@ -112,7 +112,7 @@ let classifyDocs = new CronJob({
 });
 
 let classifyDocsBasedOnTopic = new CronJob({
-  cronTime: '*/2 * * * *', //Seconds: 0-59, Minutes: 0-59, Hours: 0-23, Day of Month: 1-31, Months: 0-11 ,Day of Week: 0-6
+  cronTime: '*/1 * * * *', //Seconds: 0-59, Minutes: 0-59, Hours: 0-23, Day of Month: 1-31, Months: 0-11 ,Day of Week: 0-6
   onTick: async () => {
     console.log('Initiating article classification based on Topic...');
     MongoDB.getDocuments('categories', { parent: { $exists: false } })
@@ -120,7 +120,7 @@ let classifyDocsBasedOnTopic = new CronJob({
         let docs = await feed.fetchItems(
           'feeditems',
           { $and: [{ status: 'unclassified' }, { topic: { $ne: 'All' } }] },
-          20
+          25
         );
         console.log('search result docs: ', docs.length);
         return docs.map(d => {
@@ -136,37 +136,45 @@ let classifyDocsBasedOnTopic = new CronJob({
       })
       .then(async documents => {
         if (documents.length) {
-          console.log(documents[0]._id);
-          let docss = await Promise.all(
-            documents.map(feed.updateWithAuthorAndKeywords)
-          );
-          docss.map(d => {
-            MongoDB.updateDocument(
-              'feeditems',
-              { _id: ObjectID(d._id) },
-              {
-                $set: {
-                  status: 'classified',
-                  parentcat: d.parentcat,
-                  author: d.author,
-                  keywords: d.keywords,
-                  img: d.img
-                }
-              }
-            )
-              .then(response => {
-                console.log(response.value._id, response.value.topic);
-                Neo4j.createArticle(response.value).then(result => {
-                  if (response.value.author) {
-                    Neo4j.articleAuthorRelationship(response.value);
-                  }
-                  Neo4j.articleProviderRelationship(response.value);
-                  console.log('Article created...', result.msg);
-                  Neo4j.articleCategoryRelationship(response.value);
-                });
-              })
-              .catch(err => console.log(err));
+          let finalDocs = documents.filter(d => {
+            console.log(d.title, d.url);
+            let dateLimit = new Date();
+            dateLimit.setDate(dateLimit.getDate() - 7);
+            if (new Date(d.pubDate) >= dateLimit) {
+              return d;
+            }
           });
+          finalDocs.map(m => console.log(m.title, m.url));
+          // let docss = await Promise.all(
+          //   documents.map(feed.updateWithAuthorAndKeywords)
+          // );
+          // docss.map(d => {
+          //   MongoDB.updateDocument(
+          //     'feeditems',
+          //     { _id: ObjectID(d._id) },
+          //     {
+          //       $set: {
+          //         status: 'unclassified',
+          //         // parentcat: d.parentcat,
+          //         author: d.author,
+          //         keywords: d.keywords,
+          //         img: d.img
+          //       }
+          //     }
+          //   )
+          //     .then(response => {
+          //       console.log(response.value._id, response.value.topic);
+          // Neo4j.createArticle(response.value).then(result => {
+          //   if (response.value.author) {
+          //     Neo4j.articleAuthorRelationship(response.value);
+          //   }
+          //   Neo4j.articleProviderRelationship(response.value);
+          //   console.log('Article created...', result.msg);
+          //   Neo4j.articleCategoryRelationship(response.value);
+          // });
+          //     })
+          //     .catch(err => console.log(err));
+          // });
         } else {
           console.log('No Documents left to work on......');
         }
@@ -186,9 +194,9 @@ let synapticTraining = new CronJob({
 });
 
 function main() {
-  initialjobs.start();
-  fetchInitialFeeds.start();
-  fetchFeedContents.start();
+  // initialjobs.start();
+  // fetchInitialFeeds.start();
+  // fetchFeedContents.start();
   // classifyDocs.stop();
   classifyDocsBasedOnTopic.start();
   // synapticTraining.start();
