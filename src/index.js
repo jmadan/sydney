@@ -144,37 +144,39 @@ let classifyDocsBasedOnTopic = new CronJob({
               return d;
             }
           });
-          finalDocs.map(m => console.log(m.title, m.url));
-          // let docss = await Promise.all(
-          //   documents.map(feed.updateWithAuthorAndKeywords)
-          // );
-          // docss.map(d => {
-          //   MongoDB.updateDocument(
-          //     'feeditems',
-          //     { _id: ObjectID(d._id) },
-          //     {
-          //       $set: {
-          //         status: 'unclassified',
-          //         // parentcat: d.parentcat,
-          //         author: d.author,
-          //         keywords: d.keywords,
-          //         img: d.img
-          //       }
-          //     }
-          //   )
-          //     .then(response => {
-          //       console.log(response.value._id, response.value.topic);
-          // Neo4j.createArticle(response.value).then(result => {
-          //   if (response.value.author) {
-          //     Neo4j.articleAuthorRelationship(response.value);
-          //   }
-          //   Neo4j.articleProviderRelationship(response.value);
-          //   console.log('Article created...', result.msg);
-          //   Neo4j.articleCategoryRelationship(response.value);
-          // });
-          //     })
-          //     .catch(err => console.log(err));
-          // });
+          let docss = await Promise.all(
+            finalDocs.map(feed.updateWithAuthorAndKeywords)
+          );
+          docss.map(d => {
+            MongoDB.updateDocument(
+              'feeditems',
+              { _id: ObjectID(d._id) },
+              {
+                $set: {
+                  status: 'classified',
+                  parentcat: d.parentcat,
+                  author: d.author,
+                  keywords: d.keywords,
+                  img: d.img
+                }
+              }
+            )
+              .then(response => {
+                console.log(response.value._id, response.value.topic);
+                Neo4j.createArticle(response.value).then(result => {
+                  console.log('Article created...', result.msg);
+                  if (response.value.author) {
+                    Neo4j.articleAuthorRelationship(response.value);
+                    console.log('Article Author Relationship...');
+                  }
+                  Neo4j.articleProviderRelationship(response.value);
+                  console.log('Article Provider Relationship...');
+                  Neo4j.articleCategoryRelationship(response.value);
+                  console.log('Article Category Relationship...');
+                });
+              })
+              .catch(err => console.log(err));
+          });
         } else {
           console.log('No Documents left to work on......');
         }
