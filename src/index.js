@@ -137,7 +137,7 @@ let classifyDocsBasedOnTopic = new CronJob({
       .then(async documents => {
         if (documents.length) {
           let finalDocs = documents.filter(d => {
-            console.log(d.title, d.url);
+            // console.log(d.title, d.url);
             let dateLimit = new Date();
             dateLimit.setDate(dateLimit.getDate() - 7);
             if (new Date(d.pubDate) >= dateLimit) {
@@ -196,9 +196,9 @@ let synapticTraining = new CronJob({
 });
 
 function main() {
-  // initialjobs.start();
-  // fetchInitialFeeds.start();
-  // fetchFeedContents.start();
+  initialjobs.start();
+  fetchInitialFeeds.start();
+  fetchFeedContents.start();
   // classifyDocs.stop();
   classifyDocsBasedOnTopic.start();
   // synapticTraining.start();
