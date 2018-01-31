@@ -112,7 +112,7 @@ let classifyDocs = new CronJob({
 });
 
 let classifyDocsBasedOnTopic = new CronJob({
-  cronTime: '*/2 * * * *', //Seconds: 0-59, Minutes: 0-59, Hours: 0-23, Day of Month: 1-31, Months: 0-11 ,Day of Week: 0-6
+  cronTime: '*/1 * * * *', //Seconds: 0-59, Minutes: 0-59, Hours: 0-23, Day of Month: 1-31, Months: 0-11 ,Day of Week: 0-6
   onTick: async () => {
     console.log('Initiating article classification based on Topic...');
     MongoDB.getDocuments('categories', { parent: { $exists: false } })
@@ -120,7 +120,7 @@ let classifyDocsBasedOnTopic = new CronJob({
         let docs = await feed.fetchItems(
           'feeditems',
           { $and: [{ status: 'unclassified' }, { topic: { $ne: 'All' } }] },
-          20
+          25
         );
         console.log('search result docs: ', docs.length);
         return docs.map(d => {
@@ -136,9 +136,16 @@ let classifyDocsBasedOnTopic = new CronJob({
       })
       .then(async documents => {
         if (documents.length) {
-          console.log(documents[0]._id);
+          let finalDocs = documents.filter(d => {
+            console.log(d.title, d.url);
+            let dateLimit = new Date();
+            dateLimit.setDate(dateLimit.getDate() - 7);
+            if (new Date(d.pubDate) >= dateLimit) {
+              return d;
+            }
+          });
           let docss = await Promise.all(
-            documents.map(feed.updateWithAuthorAndKeywords)
+            finalDocs.map(feed.updateWithAuthorAndKeywords)
           );
           docss.map(d => {
             MongoDB.updateDocument(
@@ -157,12 +164,15 @@ let classifyDocsBasedOnTopic = new CronJob({
               .then(response => {
                 console.log(response.value._id, response.value.topic);
                 Neo4j.createArticle(response.value).then(result => {
+                  console.log('Article created...', result.msg);
                   if (response.value.author) {
                     Neo4j.articleAuthorRelationship(response.value);
+                    console.log('Article Author Relationship...');
                   }
                   Neo4j.articleProviderRelationship(response.value);
-                  console.log('Article created...', result.msg);
+                  console.log('Article Provider Relationship...');
                   Neo4j.articleCategoryRelationship(response.value);
+                  console.log('Article Category Relationship...');
                 });
               })
               .catch(err => console.log(err));
@@ -186,9 +196,9 @@ let synapticTraining = new CronJob({
 });
 
 function main() {
-  initialjobs.start();
-  fetchInitialFeeds.start();
-  fetchFeedContents.start();
+  // initialjobs.start();
+  // fetchInitialFeeds.start();
+  // fetchFeedContents.start();
   // classifyDocs.stop();
   classifyDocsBasedOnTopic.start();
   // synapticTraining.start();
