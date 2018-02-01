@@ -21,6 +21,7 @@ let getRSSFeedProviders = () => {
 };
 
 let getFeedItems = provider => {
+  console.log(provider.url);
   let feedList = [];
   return new Promise((resolve, reject) => {
     rp(provider.url)
@@ -32,61 +33,22 @@ let getFeedItems = provider => {
           decodeEntities: true
         });
         let lastBuildDate = Date.parse($('lastBuildDate').text());
-        if ($('item').length) {
-          $('item').each(function() {
+        if (provider.name === 'The Atlantic') {
+          $('entry').each(function() {
             feedList.push({
               title: $(this)
                 .find('title')
                 .text(),
               url: $(this)
                 .find('link')
-                .text(),
+                .attr('href'),
               description: $(this)
-                .find('description')
-                .text()
-                .replace(/<[^>]*>/g, ''),
-              img: $(this)
-                .find('media\\:thumbnail')
-                .attr('url'),
-              author: $(this)
-                .find('dc\\:creator')
-                .text(),
-              category: $(this)
-                .find('category')
-                .map((i, el) => {
-                  return $(el).text();
-                })
-                .get()
-                .join(', '),
-              keywords: $(this)
-                .find('media\\:keywords')
-                .text(),
-              status: 'pending body',
-              type: 'story',
-              pubDate: Date.parse(
-                $(this)
-                  .find('pubDate')
-                  .text()
-              ),
-              provider: provider.name,
-              topic: provider.topic
-            });
-          });
-        } else if ($('entry').length) {
-          $('event').each(function() {
-            feedList.push({
-              title: $(this)
-                .find('title')
-                .text(),
-              url: $(this)
-                .find('id')
-                .text(),
-              description: $(this)
-                .find('content')
+                .find('summary')
                 .text()
                 .replace(/<[^>]*>/g, ''),
               author: $(this)
                 .find('author')
+                .find('name')
                 .text(),
               status: 'pending body',
               type: 'story',
@@ -99,6 +61,133 @@ let getFeedItems = provider => {
               topic: provider.topic
             });
           });
+        } else if (provider.name === 'The Atlantic') {
+          $('entry').each(function() {
+            feedList.push({
+              title: $(this)
+                .find('title')
+                .text(),
+              url: $(this)
+                .find('link')
+                .attr('href'),
+              description: $(this)
+                .find('summary')
+                .text()
+                .replace(/<[^>]*>/g, ''),
+              author: $(this)
+                .find('author')
+                .find('name')
+                .text(),
+              status: 'pending body',
+              type: 'story',
+              pubDate: Date.parse(
+                $(this)
+                  .find('published')
+                  .text()
+              ),
+              provider: provider.name,
+              topic: provider.topic
+            });
+          });
+        } else if (provider.name === 'The Verge') {
+          $('entry').each(function() {
+            feedList.push({
+              title: $(this)
+                .find('title')
+                .text(),
+              url: $(this)
+                .find('link')
+                .attr('href'),
+              description: $(this)
+                .find('summary')
+                .text()
+                .replace(/<[^>]*>/g, ''),
+              author: $(this)
+                .find('author')
+                .find('name')
+                .text(),
+              status: 'pending body',
+              type: 'story',
+              pubDate: Date.parse(
+                $(this)
+                  .find('published')
+                  .text()
+              ),
+              provider: provider.name,
+              topic: provider.topic
+            });
+          });
+        } else {
+          if ($('item').length) {
+            $('item').each(function() {
+              feedList.push({
+                title: $(this)
+                  .find('title')
+                  .text(),
+                url: $(this)
+                  .find('link')
+                  .text(),
+                description: $(this)
+                  .find('description')
+                  .text()
+                  .replace(/<[^>]*>/g, ''),
+                img: $(this)
+                  .find('media\\:thumbnail')
+                  .attr('url'),
+                author: $(this)
+                  .find('dc\\:creator')
+                  .text(),
+                category: $(this)
+                  .find('category')
+                  .map((i, el) => {
+                    return $(el).text();
+                  })
+                  .get()
+                  .join(', '),
+                keywords: $(this)
+                  .find('media\\:keywords')
+                  .text(),
+                status: 'pending body',
+                type: 'story',
+                pubDate: Date.parse(
+                  $(this)
+                    .find('pubDate')
+                    .text()
+                ),
+                provider: provider.name,
+                topic: provider.topic
+              });
+            });
+          } else if ($('entry').length) {
+            $('event').each(function() {
+              feedList.push({
+                title: $(this)
+                  .find('title')
+                  .text(),
+                url: $(this)
+                  .find('id')
+                  .text(),
+                description: $(this)
+                  .find('content')
+                  .text()
+                  .replace(/<[^>]*>/g, ''),
+                author: $(this)
+                  .find('author')
+                  .text(),
+                status: 'pending body',
+                type: 'story',
+                pubDate: Date.parse(
+                  $(this)
+                    .find('published')
+                    .text()
+                ),
+                provider: provider.name,
+                topic: provider.topic
+              });
+            });
+          } else {
+            console.log('I am useless: ', provider.url);
+          }
         }
         resolve(feedList);
       })
@@ -117,7 +206,7 @@ let updateProvidersTime = provider => {
     { _id: ObjectID(provider._id) },
     { $set: { lastPulled: new Date().toISOString() } }
   ).then(response => {
-    console.log('response after time update: ', response);
+    console.log('response after time update: ', response.ok);
   });
 };
 
@@ -137,6 +226,7 @@ let saveRssFeed = items => {
           return i;
         }
       });
+      console.log(JSON.parse(finalItems));
       MongoDB.insertDocuments('feed', finalItems).then(response => {
         resolve(response);
       });

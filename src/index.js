@@ -26,15 +26,17 @@ let initialjobs = new CronJob({
 });
 
 let fetchInitialFeeds = new CronJob({
-  cronTime: '00 13 * * *',
+  cronTime: '*/2 * * * *',
   onTick: () => {
     console.log('Fetching RSS feeds....................');
     feed
       .getRSSFeedProviders()
       .then(providers => {
+        console.log('got the providers');
         return feed.getProviderFeed(providers);
       })
       .then(flist => {
+        console.log('got the feedlist...');
         flist.map(f => {
           feed
             .saveRssFeed(f.data)
@@ -183,7 +185,7 @@ let classifyDocsBasedOnTopic = new CronJob({
       })
       .catch(e => console.log(e));
   },
-  start: true
+  start: false
 });
 
 let synapticTraining = new CronJob({
@@ -197,8 +199,8 @@ let synapticTraining = new CronJob({
 
 function main() {
   // initialjobs.start();
-  // fetchInitialFeeds.start();
-  // fetchFeedContents.start();
+  fetchInitialFeeds.start();
+  fetchFeedContents.start();
   // classifyDocs.stop();
   classifyDocsBasedOnTopic.start();
   // synapticTraining.start();
