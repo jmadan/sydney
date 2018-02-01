@@ -26,7 +26,7 @@ let initialjobs = new CronJob({
 });
 
 let fetchInitialFeeds = new CronJob({
-  cronTime: '00 13 * * *',
+  cronTime: '00 21 * * *',
   onTick: () => {
     console.log('Fetching RSS feeds....................');
     feed
@@ -137,7 +137,7 @@ let classifyDocsBasedOnTopic = new CronJob({
       .then(async documents => {
         if (documents.length) {
           let finalDocs = documents.filter(d => {
-            console.log(d.title, d.url);
+            // console.log(d.title, d.url);
             let dateLimit = new Date();
             dateLimit.setDate(dateLimit.getDate() - 7);
             if (new Date(d.pubDate) >= dateLimit) {
@@ -197,8 +197,8 @@ let synapticTraining = new CronJob({
 
 function main() {
   // initialjobs.start();
-  // fetchInitialFeeds.start();
-  // fetchFeedContents.start();
+  fetchInitialFeeds.start();
+  fetchFeedContents.start();
   // classifyDocs.stop();
   classifyDocsBasedOnTopic.start();
   // synapticTraining.start();
