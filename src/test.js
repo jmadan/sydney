@@ -1,18 +1,37 @@
 'use strict';
-const rp = require('request-promise');
+const feed = require('./feed');
 
-function test(url) {
-  rp(url)
-    .then(res => {
-      console.log(res.headers);
-    })
-    .catch(err => {
-      console.log('err: ', err);
+function test(providers) {
+  feed.getProviderFeed(providers).then(flist => {
+    console.log('got the feedlist...');
+    flist.map(f => {
+      feed.saveRssFeed(f.data);
+      // .then(result => {
+      //   console.log(result.result.n + ' feeds processed.');
+      // })
+      // .catch(err => console.log(err, f));
+      feed.fetchItems('feed', { status: 'pending body' }, 10).then(result => {
+        feed.fetchContents(result).then(res => {
+          res.map(r => {
+            console.log(r.url, r.keywords, r.author);
+            feed.updateAndMoveFeedItem(r).then(result => {
+              console.log(result.result.n + ' Documents saved.');
+            });
+          });
+        });
+      });
     });
+  });
 }
 
-// test(
-//   'http://feedproxy.google.com/~r/brainpickings/rss/~3/zhi4pN-4wqc/brainpicker'
-// );
-
-test('http://feedproxy.google.com/~r/Techcrunch/~3/vtRNy0DYp3E/');
+test({
+  list: [
+    {
+      name: 'The Verge',
+      url: 'https://www.theverge.com/rss/index.xml',
+      topic: 'Technology',
+      status: 'Active',
+      lastPulled: '2018-02-01T09:50:04.319Z'
+    }
+  ]
+});

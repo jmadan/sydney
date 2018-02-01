@@ -26,22 +26,23 @@ let initialjobs = new CronJob({
 });
 
 let fetchInitialFeeds = new CronJob({
-  cronTime: '00 21 * * *',
+  cronTime: '31 23 * * *',
   onTick: () => {
     console.log('Fetching RSS feeds....................');
     feed
       .getRSSFeedProviders()
       .then(providers => {
+        console.log('got the providers');
         return feed.getProviderFeed(providers);
       })
       .then(flist => {
+        console.log('got the feedlist...');
         flist.map(f => {
-          feed
-            .saveRssFeed(f.data)
-            .then(result => {
-              console.log(result.result.n + ' feeds processed.');
-            })
-            .catch(err => console.log(err, f));
+          feed.saveRssFeed(f.data);
+          // .then(result => {
+          //   console.log(result.result.n + ' feeds processed.');
+          // })
+          // .catch(err => console.log(err, f));
         });
       });
   },
@@ -52,7 +53,7 @@ let fetchFeedContents = new CronJob({
   cronTime: '*/1 * * * *',
   onTick: () => {
     console.log('fetching Feed content...', new Date().toUTCString());
-    feed.fetchItems('feed', { status: 'pending body' }, 10).then(result => {
+    feed.fetchItems('feed', { status: 'pending body' }, 1).then(result => {
       feed.fetchContents(result).then(res => {
         res.map(r => {
           console.log(r.url, r.keywords, r.author);
@@ -120,7 +121,7 @@ let classifyDocsBasedOnTopic = new CronJob({
         let docs = await feed.fetchItems(
           'feeditems',
           { $and: [{ status: 'unclassified' }, { topic: { $ne: 'All' } }] },
-          25
+          2
         );
         console.log('search result docs: ', docs.length);
         return docs.map(d => {
@@ -139,7 +140,7 @@ let classifyDocsBasedOnTopic = new CronJob({
           let finalDocs = documents.filter(d => {
             // console.log(d.title, d.url);
             let dateLimit = new Date();
-            dateLimit.setDate(dateLimit.getDate() - 7);
+            dateLimit.setDate(dateLimit.getDate() - 30);
             if (new Date(d.pubDate) >= dateLimit) {
               return d;
             }
@@ -147,6 +148,7 @@ let classifyDocsBasedOnTopic = new CronJob({
           let docss = await Promise.all(
             finalDocs.map(feed.updateWithAuthorAndKeywords)
           );
+          console.log('docss:  --------- ', docss);
           docss.map(d => {
             MongoDB.updateDocument(
               'feeditems',
@@ -183,7 +185,7 @@ let classifyDocsBasedOnTopic = new CronJob({
       })
       .catch(e => console.log(e));
   },
-  start: true
+  start: false
 });
 
 let synapticTraining = new CronJob({
@@ -197,8 +199,8 @@ let synapticTraining = new CronJob({
 
 function main() {
   // initialjobs.start();
-  fetchInitialFeeds.start();
-  fetchFeedContents.start();
+  // fetchInitialFeeds.start();
+  // fetchFeedContents.start();
   // classifyDocs.stop();
   classifyDocsBasedOnTopic.start();
   // synapticTraining.start();

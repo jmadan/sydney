@@ -12,10 +12,12 @@ let createArticle = article => {
   return new Promise((resolve, reject) => {
     if (article.keywords) {
       query =
-        'CREATE (a:ARTICLE {id: $id, title: $title, url: $url, keywords: $keywords}) RETURN a';
+        'MERGE (a:ARTICLE {aid: $aid}) \
+        ON CREATE SET a.title=$title, a.url=$url, a.keywords=$keywords \
+        ON MATCH SET a.title=$title, a.url=$url, a.keywords=$keywords RETURN a';
       session
         .run(query, {
-          id: article._id.toString(),
+          aid: article._id.toString(),
           title: article.title,
           url: article.url,
           keywords: article.keywords.toString()
@@ -26,10 +28,13 @@ let createArticle = article => {
         })
         .catch(err => reject(err));
     } else {
-      query = 'CREATE (a:ARTICLE {id: $id, title: $title, url: $url}) RETURN a';
+      query =
+        'MERGE (a:ARTICLE {aid: $aid}) \
+        ON CREATE SET a.title=$title, a.url=$url \
+        ON MATCH SET a.title=$title, a.url=$url RETURN a';
       session
         .run(query, {
-          id: article._id.toString(),
+          aid: article._id.toString(),
           title: article.title,
           url: article.url
         })

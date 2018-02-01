@@ -37,6 +37,7 @@ let insertDocument = (coll, doc) => {
         .insertOne(doc, (err, result) => {
           datab.close();
           if (err) {
+            console.log('I got err: ', err);
             reject(err);
           }
           resolve(result);
