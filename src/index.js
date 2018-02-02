@@ -26,7 +26,7 @@ let initialjobs = new CronJob({
 });
 
 let fetchInitialFeeds = new CronJob({
-  cronTime: '10 18 * * *',
+  cronTime: '15 10 * * *',
   onTick: () => {
     console.log(
       'Fetching RSS feeds and saving them in feeds collection',
@@ -49,13 +49,13 @@ let fetchInitialFeeds = new CronJob({
 });
 
 let fetchFeedContents = new CronJob({
-  cronTime: '*/15 * * * * *',
+  cronTime: '*/2 * * * *',
   onTick: () => {
     console.log(
       'fetching feed content and moving to feeditems...',
       new Date().toUTCString()
     );
-    feed.fetchItems('feed', { status: 'pending body' }, 1).then(result => {
+    feed.fetchItems('feed', { status: 'pending body' }, 25).then(result => {
       feed.fetchFeedEntry(result).then(res => {
         res.map(r => {
           console.log('feed entry: ', r.url, r.keywords, r.author);
@@ -123,7 +123,7 @@ let classifyDocsBasedOnTopic = new CronJob({
         let docs = await feed.fetchItems(
           'feeditems',
           { $and: [{ status: 'unclassified' }, { topic: { $ne: 'All' } }] },
-          2
+          10
         );
         console.log('search result docs: ', docs.length);
         return docs.map(d => {
