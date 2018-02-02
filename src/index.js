@@ -26,9 +26,12 @@ let initialjobs = new CronJob({
 });
 
 let fetchInitialFeeds = new CronJob({
-  cronTime: '31 23 * * *',
+  cronTime: '10 18 * * *',
   onTick: () => {
-    console.log('Fetching RSS feeds....................');
+    console.log(
+      'Fetching RSS feeds and saving them in feeds collection',
+      new Date().toUTCString()
+    );
     feed
       .getRSSFeedProviders()
       .then(providers => {
@@ -39,10 +42,6 @@ let fetchInitialFeeds = new CronJob({
         console.log('got the feedlist...');
         flist.map(f => {
           feed.saveRssFeed(f.data);
-          // .then(result => {
-          //   console.log(result.result.n + ' feeds processed.');
-          // })
-          // .catch(err => console.log(err, f));
         });
       });
   },
@@ -50,13 +49,16 @@ let fetchInitialFeeds = new CronJob({
 });
 
 let fetchFeedContents = new CronJob({
-  cronTime: '*/1 * * * *',
+  cronTime: '*/15 * * * * *',
   onTick: () => {
-    console.log('fetching Feed content...', new Date().toUTCString());
+    console.log(
+      'fetching feed content and moving to feeditems...',
+      new Date().toUTCString()
+    );
     feed.fetchItems('feed', { status: 'pending body' }, 1).then(result => {
-      feed.fetchContents(result).then(res => {
+      feed.fetchFeedEntry(result).then(res => {
         res.map(r => {
-          console.log(r.url, r.keywords, r.author);
+          console.log('feed entry: ', r.url, r.keywords, r.author);
           feed.updateAndMoveFeedItem(r).then(result => {
             console.log(result.result.n + ' Documents saved.');
           });
@@ -166,15 +168,16 @@ let classifyDocsBasedOnTopic = new CronJob({
               .then(response => {
                 console.log(response.value._id, response.value.topic);
                 Neo4j.createArticle(response.value).then(result => {
-                  console.log('Article created...', result.msg);
-                  if (response.value.author) {
-                    Neo4j.articleAuthorRelationship(response.value);
-                    console.log('Article Author Relationship...');
-                  }
+                  console.log(
+                    'Article created...',
+                    result.result.records[0].get('a').properties.aid
+                  );
+                  Neo4j.articleAuthorRelationship(
+                    response.value.author,
+                    result.result.records[0].get('a').properties.aid
+                  );
                   Neo4j.articleProviderRelationship(response.value);
-                  console.log('Article Provider Relationship...');
                   Neo4j.articleCategoryRelationship(response.value);
-                  console.log('Article Category Relationship...');
                 });
               })
               .catch(err => console.log(err));
@@ -199,8 +202,8 @@ let synapticTraining = new CronJob({
 
 function main() {
   // initialjobs.start();
-  // fetchInitialFeeds.start();
-  // fetchFeedContents.start();
+  fetchInitialFeeds.start();
+  fetchFeedContents.start();
   // classifyDocs.stop();
   classifyDocsBasedOnTopic.start();
   // synapticTraining.start();

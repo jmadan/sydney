@@ -222,7 +222,6 @@ let getProviderFeed = async providers => {
 };
 
 let saveRssFeed = items => {
-  // return new Promise(function(resolve, reject) {
   if (items.length > 0) {
     let dateLimit = new Date();
     dateLimit.setMonth(dateLimit.getMonth() - 2);
@@ -234,18 +233,12 @@ let saveRssFeed = items => {
     finalItems.map(f => {
       console.log(f.url);
       MongoDB.insertDocument('feed', f).then(res => {
-        console.log('item saved: ', res.result.ok);
+        console.log('item saved: ', f.name, res.result.ok);
       });
     });
-
-    // MongoDB.insertDocuments('feed', finalItems).then(response => {
-    //   resolve(response);
-    // });
   } else {
     console.log('No Data to Save');
-    // reject({ err: 'No Data to Save' });
   }
-  // });
 };
 
 let fetchItems = (coll, query, limit) => {
@@ -299,7 +292,7 @@ let makeRequests = item => {
   });
 };
 
-let fetchContents = async items => {
+let fetchFeedEntry = async items => {
   let itemsArray = await Promise.all(items.map(makeRequests));
   return itemsArray;
 };
@@ -389,7 +382,7 @@ module.exports = {
   getRSSFeedProviders,
   saveRssFeed,
   fetchItems,
-  fetchContents,
+  fetchFeedEntry,
   updateAndMoveFeedItem,
   updateWithAuthorAndKeywords
 };
