@@ -26,22 +26,22 @@ let initialjobs = new CronJob({
 });
 
 let fetchInitialFeeds = new CronJob({
-  cronTime: '00 21 * * *',
+  cronTime: '15 10 * * *',
   onTick: () => {
-    console.log('Fetching RSS feeds....................');
+    console.log(
+      'Fetching RSS feeds and saving them in feeds collection',
+      new Date().toUTCString()
+    );
     feed
       .getRSSFeedProviders()
       .then(providers => {
+        console.log('got the providers');
         return feed.getProviderFeed(providers);
       })
       .then(flist => {
+        console.log('got the feedlist...');
         flist.map(f => {
-          feed
-            .saveRssFeed(f.data)
-            .then(result => {
-              console.log(result.result.n + ' feeds processed.');
-            })
-            .catch(err => console.log(err, f));
+          feed.saveRssFeed(f.data);
         });
       });
   },
@@ -49,13 +49,16 @@ let fetchInitialFeeds = new CronJob({
 });
 
 let fetchFeedContents = new CronJob({
-  cronTime: '*/1 * * * *',
+  cronTime: '*/2 * * * *',
   onTick: () => {
-    console.log('fetching Feed content...', new Date().toUTCString());
-    feed.fetchItems('feed', { status: 'pending body' }, 10).then(result => {
-      feed.fetchContents(result).then(res => {
+    console.log(
+      'fetching feed content and moving to feeditems...',
+      new Date().toUTCString()
+    );
+    feed.fetchItems('feed', { status: 'pending body' }, 25).then(result => {
+      feed.fetchFeedEntry(result).then(res => {
         res.map(r => {
-          console.log(r.url, r.keywords, r.author);
+          console.log('feed entry: ', r.url, r.keywords, r.author);
           feed.updateAndMoveFeedItem(r).then(result => {
             console.log(result.result.n + ' Documents saved.');
           });
@@ -120,7 +123,7 @@ let classifyDocsBasedOnTopic = new CronJob({
         let docs = await feed.fetchItems(
           'feeditems',
           { $and: [{ status: 'unclassified' }, { topic: { $ne: 'All' } }] },
-          25
+          10
         );
         console.log('search result docs: ', docs.length);
         return docs.map(d => {
@@ -139,7 +142,7 @@ let classifyDocsBasedOnTopic = new CronJob({
           let finalDocs = documents.filter(d => {
             // console.log(d.title, d.url);
             let dateLimit = new Date();
-            dateLimit.setDate(dateLimit.getDate() - 7);
+            dateLimit.setDate(dateLimit.getDate() - 30);
             if (new Date(d.pubDate) >= dateLimit) {
               return d;
             }
@@ -147,6 +150,7 @@ let classifyDocsBasedOnTopic = new CronJob({
           let docss = await Promise.all(
             finalDocs.map(feed.updateWithAuthorAndKeywords)
           );
+          console.log('docss:  --------- ', docss);
           docss.map(d => {
             MongoDB.updateDocument(
               'feeditems',
@@ -164,15 +168,16 @@ let classifyDocsBasedOnTopic = new CronJob({
               .then(response => {
                 console.log(response.value._id, response.value.topic);
                 Neo4j.createArticle(response.value).then(result => {
-                  console.log('Article created...', result.msg);
-                  if (response.value.author) {
-                    Neo4j.articleAuthorRelationship(response.value);
-                    console.log('Article Author Relationship...');
-                  }
+                  console.log(
+                    'Article created...',
+                    result.result.records[0].get('a').properties.aid
+                  );
+                  Neo4j.articleAuthorRelationship(
+                    response.value.author,
+                    result.result.records[0].get('a').properties.aid
+                  );
                   Neo4j.articleProviderRelationship(response.value);
-                  console.log('Article Provider Relationship...');
                   Neo4j.articleCategoryRelationship(response.value);
-                  console.log('Article Category Relationship...');
                 });
               })
               .catch(err => console.log(err));
@@ -183,7 +188,7 @@ let classifyDocsBasedOnTopic = new CronJob({
       })
       .catch(e => console.log(e));
   },
-  start: true
+  start: false
 });
 
 let synapticTraining = new CronJob({
