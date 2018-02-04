@@ -233,7 +233,7 @@ let saveRssFeed = items => {
     finalItems.map(f => {
       console.log(f.url);
       MongoDB.insertDocument('feed', f).then(res => {
-        console.log('item saved: ', f.name, res.result.ok);
+        console.log('item saved: ', res.result.ok);
       });
     });
   } else {
