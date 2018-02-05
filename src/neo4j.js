@@ -12,18 +12,18 @@ let createArticle = article => {
   return new Promise((resolve, reject) => {
     if (article.keywords) {
       query =
-        'MERGE (a:ARTICLE {aid: $aid}) \
+        'MERGE (a:ARTICLE {id: $id}) \
         ON CREATE SET a.title=$title, a.url=$url, a.keywords=$keywords \
         ON MATCH SET a.title=$title, a.url=$url, a.keywords=$keywords RETURN a';
     } else {
       query =
-        'MERGE (a:ARTICLE {aid: $aid}) \
+        'MERGE (a:ARTICLE {id: $id}) \
         ON CREATE SET a.title=$title, a.url=$url \
         ON MATCH SET a.title=$title, a.url=$url RETURN a';
     }
     session
       .run(query, {
-        aid: article._id.toString(),
+        id: article._id.toString(),
         title: article.title,
         url: article.url,
         keywords: article.keywords ? article.keywords.toString() : ''
@@ -40,7 +40,7 @@ let articleCategoryRelationship = article => {
   const session = driver.session();
   let query =
     'MERGE (c:CATEGORY {id: $categoryId}) WITH c \
-    MATCH (a:ARTICLE {aid: $aid}) \
+    MATCH (a:ARTICLE {id: $id}) \
     CREATE (a)-[r:HAS_CATEGORY]->(c) RETURN a,r';
   session
     .run(query, {
@@ -61,14 +61,14 @@ let articleAuthorRelationship = (author, articleId) => {
   if (author) {
     query =
       'MERGE (au:AUTHOR {name: $author}) WITH au \
-      MATCH (a:ARTICLE {aid: $aid}) \
+      MATCH (a:ARTICLE {id: $id}) \
       CREATE (a)-[r:AUTHORED_BY]->(au) RETURN a, r';
   } else {
-    query = 'MATCH (a:ARTICLE {aid: $aid}) RETURN a';
+    query = 'MATCH (a:ARTICLE {id: $id}) RETURN a';
   }
   session
     .run(query, {
-      aid: articleId.toString(),
+      id: articleId.toString(),
       author: author ? author.toString() : ''
     })
     .then(result => {
@@ -83,7 +83,7 @@ let articleProviderRelationship = article => {
   const session = driver.session();
   let query =
     'MERGE (p:PROVIDER {name: $provider}) WITH p \
-    MATCH (a:ARTICLE {aid: $aid}) \
+    MATCH (a:ARTICLE {id: $id}) \
     CREATE (a)-[r:PUBLISHED_BY {pubDate: $published_date}]->(p) RETURN a, r';
   session
     .run(query, {

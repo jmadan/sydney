@@ -66,7 +66,8 @@ let getFeedItems = provider => {
                   .text()
               ),
               provider: provider.name,
-              topic: provider.topic
+              topic: provider.topic,
+              subtopic: provider.subtopic ? provider.subtopic : ''
             });
           });
         } else if (provider.name === 'The Atlantic') {
@@ -94,7 +95,8 @@ let getFeedItems = provider => {
                   .text()
               ),
               provider: provider.name,
-              topic: provider.topic
+              topic: provider.topic,
+              subtopic: provider.subtopic ? provider.subtopic : ''
             });
           });
         } else if (provider.name === 'The Verge') {
@@ -119,7 +121,8 @@ let getFeedItems = provider => {
                   .text()
               ),
               provider: provider.name,
-              topic: provider.topic
+              topic: provider.topic,
+              subtopic: provider.subtopic ? provider.subtopic : ''
             });
           });
         } else {
@@ -160,7 +163,8 @@ let getFeedItems = provider => {
                     .text()
                 ),
                 provider: provider.name,
-                topic: provider.topic
+                topic: provider.topic,
+                subtopic: provider.subtopic ? provider.subtopic : ''
               });
             });
           } else if ($('entry').length) {
@@ -187,7 +191,8 @@ let getFeedItems = provider => {
                     .text()
                 ),
                 provider: provider.name,
-                topic: provider.topic
+                topic: provider.topic,
+                subtopic: provider.subtopic ? provider.subtopic : ''
               });
             });
           } else {
@@ -233,7 +238,7 @@ let saveRssFeed = items => {
     finalItems.map(f => {
       console.log(f.url);
       MongoDB.insertDocument('feed', f).then(res => {
-        console.log('item saved: ', f.name, res.result.ok);
+        console.log('item saved: ', res.result.ok);
       });
     });
   } else {
@@ -313,6 +318,7 @@ let updateAndMoveFeedItem = item => {
         pubDate: item.pubDate,
         provider: item.provider,
         topic: item.topic,
+        subtopic: item.subtopic,
         category: item.category,
         status: 'unclassified',
         stemwords: item.stemwords
