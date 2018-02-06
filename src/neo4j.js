@@ -58,13 +58,15 @@ let articleCategoryRelationship = article => {
 let articleSubCategoryRelationship = article => {
   const session = driver.session();
   let query =
-    'MERGE (c:CATEGORY {id: $categoryId}) WITH c \
+    'MERGE (c:CATEGORY {id: $categoryId}) \
+    ON CREATE SET c.name=$subcategory_name  WITH c \
     MATCH (a:ARTICLE {id: $id}) \
     CREATE (a)-[r:HAS_CATEGORY]->(c) RETURN a,r';
   session
     .run(query, {
       id: article._id.toString(),
-      categoryId: article.parentcat._id.toString()
+      categoryId: article.subcategory._id.toString(),
+      subcategory_name: article.subcategory.name.toString()
     })
     .then(result => {
       session.close();
