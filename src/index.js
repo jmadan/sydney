@@ -26,7 +26,7 @@ let initialjobs = new CronJob({
 });
 
 let fetchInitialFeeds = new CronJob({
-  cronTime: '15 10 * * *',
+  cronTime: '00 13 * * *',
   onTick: () => {
     console.log(
       'Fetching RSS feeds and saving them in feeds collection',
@@ -94,7 +94,7 @@ let classifyDocs = new CronJob({
   onTick: () => {
     console.log('Initiating article classification ...');
     feed
-      .fetchItems('feeditems', { status: 'classified' }, 1)
+      .fetchItems('feeditems', { status: 'classified' }, 15)
       .then(doc => {
         if (doc.length > 0) {
           return synaptic.classifyDocs(doc[0]);
@@ -118,18 +118,28 @@ let classifyDocsBasedOnTopic = new CronJob({
   cronTime: '*/1 * * * *', //Seconds: 0-59, Minutes: 0-59, Hours: 0-23, Day of Month: 1-31, Months: 0-11 ,Day of Week: 0-6
   onTick: async () => {
     console.log('Initiating article classification based on Topic...');
-    MongoDB.getDocuments('categories', { parent: { $exists: false } })
+    // MongoDB.getDocuments('categories', { parent: { $exists: false } })
+    MongoDB.getDocuments('categories', {})
       .then(async cats => {
         let docs = await feed.fetchItems(
           'feeditems',
-          { $and: [{ status: 'unclassified' }, { topic: { $ne: 'All' } }] },
+          {
+            $and: [{ status: 'unclassified' }, { topic: { $ne: 'All' } }]
+          },
           10
         );
         console.log('search result docs: ', docs.length);
         return docs.map(d => {
           if (cats.find(c => c.name === d.topic)) {
             d.parentcat = cats.find(c => {
-              if (c.name === d.topic) {
+              if (c.name === d.topic && !c.parent) {
+                return c;
+              }
+            });
+          }
+          if (cats.find(c => c.name === d.subtopic)) {
+            d.subcategory = cats.find(c => {
+              if (c.name === d.subtopic && c.parent) {
                 return c;
               }
             });
@@ -150,6 +160,7 @@ let classifyDocsBasedOnTopic = new CronJob({
           let docss = await Promise.all(
             finalDocs.map(feed.updateWithAuthorAndKeywords)
           );
+          console.log('docss:  --------- ', docss);
           docss.map(d => {
             MongoDB.updateDocument(
               'feeditems',
@@ -158,6 +169,7 @@ let classifyDocsBasedOnTopic = new CronJob({
                 $set: {
                   status: 'classified',
                   parentcat: d.parentcat,
+                  subcategory: d.subcategory,
                   author: d.author,
                   keywords: d.keywords,
                   img: d.img
@@ -169,14 +181,18 @@ let classifyDocsBasedOnTopic = new CronJob({
                 Neo4j.createArticle(response.value).then(result => {
                   console.log(
                     'Article created...',
-                    result.result.records[0].get('a').properties.aid
+                    result.result.records[0].get('a').properties.id
                   );
                   Neo4j.articleAuthorRelationship(
                     response.value.author,
-                    result.result.records[0].get('a').properties.aid
+                    result.result.records[0].get('a').properties.id
                   );
                   Neo4j.articleProviderRelationship(response.value);
-                  Neo4j.articleCategoryRelationship(response.value);
+                  if (response.value.subcategory) {
+                    Neo4j.articleSubCategoryRelationship(response.value);
+                  } else {
+                    Neo4j.articleCategoryRelationship(response.value);
+                  }
                 });
               })
               .catch(err => console.log(err));

@@ -55,6 +55,27 @@ let articleCategoryRelationship = article => {
     .catch(err => console.log(err));
 };
 
+let articleSubCategoryRelationship = article => {
+  const session = driver.session();
+  let query =
+    'MERGE (c:CATEGORY {id: $categoryId}) \
+    ON CREATE SET c.name=$subcategory_name  WITH c \
+    MATCH (a:ARTICLE {id: $id}) \
+    CREATE (a)-[r:HAS_CATEGORY]->(c) RETURN a,r';
+  session
+    .run(query, {
+      id: article._id.toString(),
+      categoryId: article.subcategory._id.toString(),
+      subcategory_name: article.subcategory.name.toString()
+    })
+    .then(result => {
+      session.close();
+      console.log('Article node and Relationship created.');
+      console.log(result.records[0]);
+    })
+    .catch(err => console.log(err));
+};
+
 let articleAuthorRelationship = (author, articleId) => {
   const session = driver.session();
   let query = null;
@@ -103,5 +124,6 @@ module.exports = {
   createArticle,
   articleCategoryRelationship,
   articleAuthorRelationship,
-  articleProviderRelationship
+  articleProviderRelationship,
+  articleSubCategoryRelationship
 };
