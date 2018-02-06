@@ -150,7 +150,6 @@ let classifyDocsBasedOnTopic = new CronJob({
       .then(async documents => {
         if (documents.length) {
           let finalDocs = documents.filter(d => {
-            // console.log(d.title, d.url);
             let dateLimit = new Date();
             dateLimit.setDate(dateLimit.getDate() - 30);
             if (new Date(d.pubDate) >= dateLimit) {
