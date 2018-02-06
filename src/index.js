@@ -181,14 +181,18 @@ let classifyDocsBasedOnTopic = new CronJob({
                 Neo4j.createArticle(response.value).then(result => {
                   console.log(
                     'Article created...',
-                    result.result.records[0].get('a').properties.aid
+                    result.result.records[0].get('a').properties.id
                   );
                   Neo4j.articleAuthorRelationship(
                     response.value.author,
-                    result.result.records[0].get('a').properties.aid
+                    result.result.records[0].get('a').properties.id
                   );
                   Neo4j.articleProviderRelationship(response.value);
-                  Neo4j.articleCategoryRelationship(response.value);
+                  if (response.value.subcategory) {
+                    Neo4j.articleSubCategoryRelationship(response.value);
+                  } else {
+                    Neo4j.articleCategoryRelationship(response.value);
+                  }
                 });
               })
               .catch(err => console.log(err));

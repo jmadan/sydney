@@ -44,7 +44,26 @@ let articleCategoryRelationship = article => {
     CREATE (a)-[r:HAS_CATEGORY]->(c) RETURN a,r';
   session
     .run(query, {
-      aid: article._id.toString(),
+      id: article._id.toString(),
+      categoryId: article.parentcat._id.toString()
+    })
+    .then(result => {
+      session.close();
+      console.log('Article node and Relationship created.');
+      console.log(result.records[0]);
+    })
+    .catch(err => console.log(err));
+};
+
+let articleSubCategoryRelationship = article => {
+  const session = driver.session();
+  let query =
+    'MERGE (c:CATEGORY {id: $categoryId}) WITH c \
+    MATCH (a:ARTICLE {id: $id}) \
+    CREATE (a)-[r:HAS_CATEGORY]->(c) RETURN a,r';
+  session
+    .run(query, {
+      id: article._id.toString(),
       categoryId: article.parentcat._id.toString()
     })
     .then(result => {
@@ -87,7 +106,7 @@ let articleProviderRelationship = article => {
     CREATE (a)-[r:PUBLISHED_BY {pubDate: $published_date}]->(p) RETURN a, r';
   session
     .run(query, {
-      aid: article._id.toString(),
+      id: article._id.toString(),
       provider: article.provider.toString(),
       published_date: article.pubDate.toString()
     })
@@ -103,5 +122,6 @@ module.exports = {
   createArticle,
   articleCategoryRelationship,
   articleAuthorRelationship,
-  articleProviderRelationship
+  articleProviderRelationship,
+  articleSubCategoryRelationship
 };
