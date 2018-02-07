@@ -124,7 +124,11 @@ let classifyDocsBasedOnTopic = new CronJob({
         let docs = await feed.fetchItems(
           'feeditems',
           {
-            $and: [{ status: 'unclassified' }, { topic: { $ne: 'All' } }]
+            $and: [
+              { status: 'unclassified' },
+              { topic: { $ne: 'All' } },
+              { provider: 'The New Yorker' }
+            ]
           },
           10
         );
@@ -160,40 +164,42 @@ let classifyDocsBasedOnTopic = new CronJob({
             finalDocs.map(feed.updateWithAuthorAndKeywords)
           );
           docss.map(d => {
-            MongoDB.updateDocument(
-              'feeditems',
-              { _id: ObjectID(d._id) },
-              {
-                $set: {
-                  status: 'classified',
-                  parentcat: d.parentcat,
-                  subcategory: d.subcategory,
-                  author: d.author,
-                  keywords: d.keywords,
-                  img: d.img
-                }
-              }
-            )
-              .then(response => {
-                console.log(response.value._id, response.value.topic);
-                Neo4j.createArticle(response.value).then(result => {
-                  console.log(
-                    'Article created...',
-                    result.result.records[0].get('a').properties.id
-                  );
-                  Neo4j.articleAuthorRelationship(
-                    response.value.author,
-                    result.result.records[0].get('a').properties.id
-                  );
-                  Neo4j.articleProviderRelationship(response.value);
-                  if (response.value.subcategory) {
-                    Neo4j.articleSubCategoryRelationship(response.value);
-                  } else {
-                    Neo4j.articleCategoryRelationship(response.value);
+            if (d._id) {
+              MongoDB.updateDocument(
+                'feeditems',
+                { _id: ObjectID(d._id) },
+                {
+                  $set: {
+                    status: 'classified',
+                    parentcat: d.parentcat,
+                    subcategory: d.subcategory,
+                    author: d.author,
+                    keywords: d.keywords,
+                    img: d.img
                   }
-                });
-              })
-              .catch(err => console.log(err));
+                }
+              )
+                .then(response => {
+                  console.log(response.value._id, response.value.topic);
+                  Neo4j.createArticle(response.value).then(result => {
+                    console.log(
+                      'Article created...',
+                      result.result.records[0].get('a').properties.id
+                    );
+                    Neo4j.articleAuthorRelationship(
+                      response.value.author,
+                      result.result.records[0].get('a').properties.id
+                    );
+                    Neo4j.articleProviderRelationship(response.value);
+                    if (response.value.subcategory) {
+                      Neo4j.articleSubCategoryRelationship(response.value);
+                    } else {
+                      Neo4j.articleCategoryRelationship(response.value);
+                    }
+                  });
+                })
+                .catch(err => console.log(err));
+            }
           });
         } else {
           console.log('No Documents left to work on......');

@@ -386,9 +386,18 @@ let updateWithAuthorAndKeywords = item => {
         resolve(item);
       })
       .catch(err => {
-        reject(err);
+        handleError(err, item);
+        reject({ errName: err.name, errCode: err.statusCode, item: item._id });
       });
   });
+};
+
+let handleError = (err, item) => {
+  if (err.statusCode === 404) {
+    MongoDB.deleteDocument('feeditems', item).then(response => {
+      console.log('document deleted', response.result.ok);
+    });
+  }
 };
 //==================
 
