@@ -12,40 +12,36 @@ let createArticle = article => {
   return new Promise((resolve, reject) => {
     if (article.keywords) {
       query =
-        'CREATE (a:ARTICLE {id: $id, title: $title, url: $url, keywords: $keywords}) RETURN a';
-      session
-        .run(query, {
-          id: article._id.toString(),
-          title: article.title,
-          url: article.url,
-          keywords: article.keywords.toString()
-        })
-        .then(result => {
-          session.close();
-          resolve({ msg: result.records[0] });
-        })
-        .catch(err => reject(err));
+        'MERGE (a:ARTICLE {id: $id}) \
+        ON CREATE SET a.title=$title, a.url=$url, a.keywords=$keywords \
+        ON MATCH SET a.title=$title, a.url=$url, a.keywords=$keywords RETURN a';
     } else {
-      query = 'CREATE (a:ARTICLE {id: $id, title: $title, url: $url}) RETURN a';
-      session
-        .run(query, {
-          id: article._id.toString(),
-          title: article.title,
-          url: article.url
-        })
-        .then(result => {
-          session.close();
-          resolve({ msg: result.records[0] });
-        })
-        .catch(err => reject(err));
+      query =
+        'MERGE (a:ARTICLE {id: $id}) \
+        ON CREATE SET a.title=$title, a.url=$url \
+        ON MATCH SET a.title=$title, a.url=$url RETURN a';
     }
+    session
+      .run(query, {
+        id: article._id.toString(),
+        title: article.title,
+        url: article.url,
+        keywords: article.keywords ? article.keywords.toString() : ''
+      })
+      .then(result => {
+        session.close();
+        resolve({ result });
+      })
+      .catch(err => reject(err));
   });
 };
 
 let articleCategoryRelationship = article => {
   const session = driver.session();
   let query =
-    'MERGE (a:ARTICLE {id: $id}) MERGE (c:CATEGORY {id: $categoryId}) CREATE (a)-[r:HAS_CATEGORY]->(c) RETURN r';
+    'MERGE (c:CATEGORY {id: $categoryId}) WITH c \
+    MATCH (a:ARTICLE {id: $id}) \
+    CREATE (a)-[r:HAS_CATEGORY]->(c) RETURN a,r';
   session
     .run(query, {
       id: article._id.toString(),
@@ -59,19 +55,42 @@ let articleCategoryRelationship = article => {
     .catch(err => console.log(err));
 };
 
-let articleAuthorRelationship = article => {
+let articleSubCategoryRelationship = article => {
   const session = driver.session();
-  let query = null;
-  if (article.author) {
-    query =
-      'MERGE (a:ARTICLE {id: $id}) MERGE (au:AUTHOR {name: $author}) CREATE (a)-[r:AUTHORED_BY]->(au) RETURN r';
-  } else {
-    query = 'MERGE (a:ARTICLE {id: $id}) RETURN a';
-  }
+  let query =
+    'MERGE (c:CATEGORY {id: $categoryId}) \
+    ON CREATE SET c.name=$subcategory_name  WITH c \
+    MATCH (a:ARTICLE {id: $id}) \
+    CREATE (a)-[r:HAS_CATEGORY]->(c) RETURN a,r';
   session
     .run(query, {
       id: article._id.toString(),
-      author: article.author.toString()
+      categoryId: article.subcategory._id.toString(),
+      subcategory_name: article.subcategory.name.toString()
+    })
+    .then(result => {
+      session.close();
+      console.log('Article node and Relationship created.');
+      console.log(result.records[0]);
+    })
+    .catch(err => console.log(err));
+};
+
+let articleAuthorRelationship = (author, articleId) => {
+  const session = driver.session();
+  let query = null;
+  if (author) {
+    query =
+      'MERGE (au:AUTHOR {name: $author}) WITH au \
+      MATCH (a:ARTICLE {id: $id}) \
+      CREATE (a)-[r:AUTHORED_BY]->(au) RETURN a, r';
+  } else {
+    query = 'MATCH (a:ARTICLE {id: $id}) RETURN a';
+  }
+  session
+    .run(query, {
+      id: articleId.toString(),
+      author: author ? author.toString() : ''
     })
     .then(result => {
       session.close();
@@ -84,7 +103,9 @@ let articleAuthorRelationship = article => {
 let articleProviderRelationship = article => {
   const session = driver.session();
   let query =
-    'MERGE (a:ARTICLE {id: $id}) MERGE (p:PROVIDER {name: $provider}) CREATE (a)-[r:PUBLISHED_BY {pubDate: $published_date}]->(p) RETURN r';
+    'MERGE (p:PROVIDER {name: $provider}) WITH p \
+    MATCH (a:ARTICLE {id: $id}) \
+    CREATE (a)-[r:PUBLISHED_BY {pubDate: $published_date}]->(p) RETURN a, r';
   session
     .run(query, {
       id: article._id.toString(),
@@ -103,5 +124,6 @@ module.exports = {
   createArticle,
   articleCategoryRelationship,
   articleAuthorRelationship,
-  articleProviderRelationship
+  articleProviderRelationship,
+  articleSubCategoryRelationship
 };
