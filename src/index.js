@@ -7,6 +7,8 @@ const synaptic = require('./synaptic');
 const MongoDB = require('./mongodb');
 const ObjectID = require('mongodb').ObjectID;
 const Neo4j = require('./neo4j');
+var Raven = require('raven');
+Raven.config(process.env.RAVEN_CONFIG).install();
 
 let initialjobs = new CronJob({
   cronTime: '5 0 * 1 *',
@@ -118,17 +120,12 @@ let classifyDocsBasedOnTopic = new CronJob({
   cronTime: '*/1 * * * *', //Seconds: 0-59, Minutes: 0-59, Hours: 0-23, Day of Month: 1-31, Months: 0-11 ,Day of Week: 0-6
   onTick: async () => {
     console.log('Initiating article classification based on Topic...');
-    // MongoDB.getDocuments('categories', { parent: { $exists: false } })
     MongoDB.getDocuments('categories', {})
       .then(async cats => {
         let docs = await feed.fetchItems(
           'feeditems',
           {
-            $and: [
-              { status: 'unclassified' },
-              { topic: { $ne: 'All' } },
-              { provider: 'The New Yorker' }
-            ]
+            $and: [{ status: 'unclassified' }, { topic: { $ne: 'All' } }]
           },
           10
         );
@@ -182,10 +179,10 @@ let classifyDocsBasedOnTopic = new CronJob({
                 .then(response => {
                   console.log(response.value._id, response.value.topic);
                   Neo4j.createArticle(response.value).then(result => {
-                    console.log(
-                      'Article created...',
-                      result.result.records[0].get('a').properties.id
-                    );
+                    // console.log(
+                    //   'Article created...',
+                    //   result.result.records[0].get('a').properties.id
+                    // );
                     Neo4j.articleAuthorRelationship(
                       response.value.author,
                       result.result.records[0].get('a').properties.id

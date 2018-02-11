@@ -15,6 +15,7 @@
     "mongodb": "^3.0.1",
     "natural": "^0.5.4",
     "neo4j-driver": "^1.5.3",
+    "raven": "^2.4.1",
     "redis": "^2.8.0",
     "request": "^2.83.0",
     "request-promise": "^4.2.2",
