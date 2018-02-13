@@ -275,6 +275,8 @@ let makeRequests = item => {
           item.keywords = $('meta[name="keywords"]').attr('content');
         } else if ($('meta[name="article:tag"]').length > 0) {
           item.keywords = $('meta[name="article:tag"]').attr('content');
+        } else if ($('meta[name="sailthru.tags"]').length > 0) {
+          item.keywords = $('meta[name="sailthru.tags"]').attr('content');
         }
       }
       if (item.author === '') {
