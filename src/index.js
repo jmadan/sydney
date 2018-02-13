@@ -160,6 +160,7 @@ let classifyDocsBasedOnTopic = new CronJob({
           let docss = await Promise.all(
             finalDocs.map(feed.updateWithAuthorAndKeywords)
           );
+          console.log('docss:  --------- ', docss);
           docss.map(d => {
             if (d._id) {
               MongoDB.updateDocument(
