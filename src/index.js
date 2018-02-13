@@ -7,6 +7,8 @@ const synaptic = require('./synaptic');
 const MongoDB = require('./mongodb');
 const ObjectID = require('mongodb').ObjectID;
 const Neo4j = require('./neo4j');
+var Raven = require('raven');
+Raven.config(process.env.RAVEN_CONFIG).install();
 
 let initialjobs = new CronJob({
   cronTime: '5 0 * 1 *',
@@ -26,7 +28,7 @@ let initialjobs = new CronJob({
 });
 
 let fetchInitialFeeds = new CronJob({
-  cronTime: '00 13 * * *',
+  cronTime: '00 14 * * *',
   onTick: () => {
     console.log(
       'Fetching RSS feeds and saving them in feeds collection',
@@ -118,7 +120,6 @@ let classifyDocsBasedOnTopic = new CronJob({
   cronTime: '*/1 * * * *', //Seconds: 0-59, Minutes: 0-59, Hours: 0-23, Day of Month: 1-31, Months: 0-11 ,Day of Week: 0-6
   onTick: async () => {
     console.log('Initiating article classification based on Topic...');
-    // MongoDB.getDocuments('categories', { parent: { $exists: false } })
     MongoDB.getDocuments('categories', {})
       .then(async cats => {
         let docs = await feed.fetchItems(
@@ -161,40 +162,42 @@ let classifyDocsBasedOnTopic = new CronJob({
           );
           console.log('docss:  --------- ', docss);
           docss.map(d => {
-            MongoDB.updateDocument(
-              'feeditems',
-              { _id: ObjectID(d._id) },
-              {
-                $set: {
-                  status: 'classified',
-                  parentcat: d.parentcat,
-                  subcategory: d.subcategory,
-                  author: d.author,
-                  keywords: d.keywords,
-                  img: d.img
-                }
-              }
-            )
-              .then(response => {
-                console.log(response.value._id, response.value.topic);
-                Neo4j.createArticle(response.value).then(result => {
-                  console.log(
-                    'Article created...',
-                    result.result.records[0].get('a').properties.id
-                  );
-                  Neo4j.articleAuthorRelationship(
-                    response.value.author,
-                    result.result.records[0].get('a').properties.id
-                  );
-                  Neo4j.articleProviderRelationship(response.value);
-                  if (response.value.subcategory) {
-                    Neo4j.articleSubCategoryRelationship(response.value);
-                  } else {
-                    Neo4j.articleCategoryRelationship(response.value);
+            if (d._id) {
+              MongoDB.updateDocument(
+                'feeditems',
+                { _id: ObjectID(d._id) },
+                {
+                  $set: {
+                    status: 'classified',
+                    parentcat: d.parentcat,
+                    subcategory: d.subcategory,
+                    author: d.author,
+                    keywords: d.keywords,
+                    img: d.img
                   }
-                });
-              })
-              .catch(err => console.log(err));
+                }
+              )
+                .then(response => {
+                  console.log(response.value._id, response.value.topic);
+                  Neo4j.createArticle(response.value).then(result => {
+                    // console.log(
+                    //   'Article created...',
+                    //   result.result.records[0].get('a').properties.id
+                    // );
+                    Neo4j.articleAuthorRelationship(
+                      response.value.author,
+                      result.result.records[0].get('a').properties.id
+                    );
+                    Neo4j.articleProviderRelationship(response.value);
+                    if (response.value.subcategory) {
+                      Neo4j.articleSubCategoryRelationship(response.value);
+                    } else {
+                      Neo4j.articleCategoryRelationship(response.value);
+                    }
+                  });
+                })
+                .catch(err => console.log(err));
+            }
           });
         } else {
           console.log('No Documents left to work on......');

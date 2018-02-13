@@ -271,8 +271,10 @@ let makeRequests = item => {
       if (item.keywords === '') {
         if ($('meta[name="news_keywords"]').length > 0) {
           item.keywords = $('meta[name="news_keywords"]').attr('content');
-        } else {
+        } else if ($('meta[name="keywords"]').length > 0) {
           item.keywords = $('meta[name="keywords"]').attr('content');
+        } else if ($('meta[name="article:tag"]').length > 0) {
+          item.keywords = $('meta[name="article:tag"]').attr('content');
         }
       }
       if (item.author === '') {
@@ -386,9 +388,18 @@ let updateWithAuthorAndKeywords = item => {
         resolve(item);
       })
       .catch(err => {
-        reject(err);
+        handleError(err, item);
+        reject({ errName: err.name, errCode: err.statusCode, item: item._id });
       });
   });
+};
+
+let handleError = (err, item) => {
+  if (err.statusCode === 404) {
+    MongoDB.deleteDocument('feeditems', item).then(response => {
+      console.log('document deleted', response.result.ok);
+    });
+  }
 };
 //==================
 
