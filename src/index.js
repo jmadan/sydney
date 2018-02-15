@@ -7,8 +7,9 @@ const synaptic = require('./synaptic');
 const MongoDB = require('./mongodb');
 const ObjectID = require('mongodb').ObjectID;
 const Neo4j = require('./neo4j');
-var Raven = require('raven');
-Raven.config(process.env.RAVEN_CONFIG).install();
+// const Raven = require('raven');
+
+// Raven.config(process.env.RAVEN_CONFIG).install();
 
 let initialjobs = new CronJob({
   cronTime: '5 0 * 1 *',
