@@ -1,11 +1,11 @@
-'use strict';
-const rp = require('request-promise');
-const cheerio = require('cheerio');
-const natural = require('natural');
-const textract = require('textract');
-const MongoDB = require('./mongodb');
-const ObjectID = require('mongodb').ObjectID;
-const he = require('he');
+"use strict";
+const rp = require("request-promise");
+const cheerio = require("cheerio");
+const natural = require("natural");
+const textract = require("textract");
+const MongoDB = require("./mongodb");
+const ObjectID = require("mongodb").ObjectID;
+const he = require("he");
 
 const lancasterStemmer = natural.LancasterStemmer;
 
@@ -13,8 +13,8 @@ const DBURI = process.env.MONGODB_URI;
 
 let getRSSFeedProviders = () => {
   return new Promise(function(resolve) {
-    MongoDB.getDocuments('feedproviders', {
-      status: { $in: ['active', 'Active'] }
+    MongoDB.getDocuments("feedproviders", {
+      status: { $in: ["active", "Active"] }
     }).then(providerList => {
       resolve({ list: providerList });
     });
@@ -27,8 +27,8 @@ let getFeedItems = provider => {
   var options = {
     uri: provider.url,
     headers: {
-      'User-Agent':
-        'Mozilla/5.0 (Macintosh; Intel Mac OS X x.y; rv:42.0) Gecko/20100101 Firefox/42.0'
+      "User-Agent":
+        "Mozilla/5.0 (Macintosh; Intel Mac OS X x.y; rv:42.0) Gecko/20100101 Firefox/42.0"
     }
   };
   return new Promise((resolve, reject) => {
@@ -40,163 +40,163 @@ let getFeedItems = provider => {
           xmlMode: true,
           decodeEntities: true
         });
-        let lastBuildDate = Date.parse($('lastBuildDate').text());
-        if (provider.name === 'The Atlantic') {
-          $('entry').each(function() {
+        let lastBuildDate = Date.parse($("lastBuildDate").text());
+        if (provider.name === "The Atlantic") {
+          $("entry").each(function() {
             feedList.push({
               title: $(this)
-                .find('title')
+                .find("title")
                 .text(),
               url: $(this)
-                .find('link')
-                .attr('href'),
+                .find("link")
+                .attr("href"),
               description: $(this)
-                .find('summary')
+                .find("summary")
                 .text()
-                .replace(/<[^>]*>/g, ''),
+                .replace(/<[^>]*>/g, ""),
               author: $(this)
-                .find('author')
-                .find('name')
+                .find("author")
+                .find("name")
                 .text(),
-              status: 'pending body',
-              type: 'story',
+              status: "pending body",
+              type: "story",
               pubDate: Date.parse(
                 $(this)
-                  .find('published')
+                  .find("published")
                   .text()
               ),
               provider: provider.name,
               topic: provider.topic,
-              subtopic: provider.subtopic ? provider.subtopic : ''
+              subtopic: provider.subtopic ? provider.subtopic : ""
             });
           });
-        } else if (provider.name === 'The Atlantic') {
-          $('entry').each(function() {
+        } else if (provider.name === "The Atlantic") {
+          $("entry").each(function() {
             feedList.push({
               title: $(this)
-                .find('title')
+                .find("title")
                 .text(),
               url: $(this)
-                .find('link')
-                .attr('href'),
+                .find("link")
+                .attr("href"),
               description: $(this)
-                .find('summary')
+                .find("summary")
                 .text()
-                .replace(/<[^>]*>/g, ''),
+                .replace(/<[^>]*>/g, ""),
               author: $(this)
-                .find('author')
-                .find('name')
+                .find("author")
+                .find("name")
                 .text(),
-              status: 'pending body',
-              type: 'story',
+              status: "pending body",
+              type: "story",
               pubDate: Date.parse(
                 $(this)
-                  .find('published')
+                  .find("published")
                   .text()
               ),
               provider: provider.name,
               topic: provider.topic,
-              subtopic: provider.subtopic ? provider.subtopic : ''
+              subtopic: provider.subtopic ? provider.subtopic : ""
             });
           });
-        } else if (provider.name === 'The Verge') {
-          $('entry').each(function() {
+        } else if (provider.name === "The Verge") {
+          $("entry").each(function() {
             feedList.push({
               title: $(this)
-                .find('title')
+                .find("title")
                 .text(),
               url: $(this)
-                .find('link')
-                .attr('href'),
-              description: '',
+                .find("link")
+                .attr("href"),
+              description: "",
               author: $(this)
-                .find('author')
-                .find('name')
+                .find("author")
+                .find("name")
                 .text(),
-              status: 'pending body',
-              type: 'story',
+              status: "pending body",
+              type: "story",
               pubDate: Date.parse(
                 $(this)
-                  .find('published')
+                  .find("published")
                   .text()
               ),
               provider: provider.name,
               topic: provider.topic,
-              subtopic: provider.subtopic ? provider.subtopic : ''
+              subtopic: provider.subtopic ? provider.subtopic : ""
             });
           });
         } else {
-          if ($('item').length) {
-            $('item').each(function() {
+          if ($("item").length) {
+            $("item").each(function() {
               feedList.push({
                 title: $(this)
-                  .find('title')
+                  .find("title")
                   .text(),
                 url: $(this)
-                  .find('link')
+                  .find("link")
                   .text(),
                 description: $(this)
-                  .find('description')
+                  .find("description")
                   .text()
-                  .replace(/<[^>]*>/g, ''),
+                  .replace(/<[^>]*>/g, ""),
                 img: $(this)
-                  .find('media\\:thumbnail')
-                  .attr('url'),
+                  .find("media\\:thumbnail")
+                  .attr("url"),
                 author: $(this)
-                  .find('dc\\:creator')
+                  .find("dc\\:creator")
                   .text(),
                 category: $(this)
-                  .find('category')
+                  .find("category")
                   .map((i, el) => {
                     return $(el).text();
                   })
                   .get()
-                  .join(', '),
+                  .join(", "),
                 keywords: $(this)
-                  .find('media\\:keywords')
+                  .find("media\\:keywords")
                   .text(),
-                status: 'pending body',
-                type: 'story',
+                status: "pending body",
+                type: "story",
                 pubDate: Date.parse(
                   $(this)
-                    .find('pubDate')
+                    .find("pubDate")
                     .text()
                 ),
                 provider: provider.name,
                 topic: provider.topic,
-                subtopic: provider.subtopic ? provider.subtopic : ''
+                subtopic: provider.subtopic ? provider.subtopic : ""
               });
             });
-          } else if ($('entry').length) {
-            $('event').each(function() {
+          } else if ($("entry").length) {
+            $("event").each(function() {
               feedList.push({
                 title: $(this)
-                  .find('title')
+                  .find("title")
                   .text(),
                 url: $(this)
-                  .find('id')
+                  .find("id")
                   .text(),
                 description: $(this)
-                  .find('content')
+                  .find("content")
                   .text()
-                  .replace(/<[^>]*>/g, ''),
+                  .replace(/<[^>]*>/g, ""),
                 author: $(this)
-                  .find('author')
+                  .find("author")
                   .text(),
-                status: 'pending body',
-                type: 'story',
+                status: "pending body",
+                type: "story",
                 pubDate: Date.parse(
                   $(this)
-                    .find('published')
+                    .find("published")
                     .text()
                 ),
                 provider: provider.name,
                 topic: provider.topic,
-                subtopic: provider.subtopic ? provider.subtopic : ''
+                subtopic: provider.subtopic ? provider.subtopic : ""
               });
             });
           } else {
-            console.log('I am useless: ', provider.url);
+            console.log("I am useless: ", provider.url);
           }
         }
         resolve(feedList);
@@ -206,17 +206,17 @@ let getFeedItems = provider => {
 };
 
 let returnNew = async (val, index, arr) => {
-  val['data'] = await getFeedItems(val);
+  val["data"] = await getFeedItems(val);
   return val;
 };
 
 let updateProvidersTime = provider => {
   MongoDB.updateDocument(
-    'feedproviders',
+    "feedproviders",
     { _id: ObjectID(provider._id) },
     { $set: { lastPulled: new Date().toISOString() } }
   ).then(response => {
-    console.log('response after time update: ', response.ok);
+    console.log("response after time update: ", response.ok);
   });
 };
 
@@ -236,12 +236,12 @@ let saveRssFeed = items => {
       }
     });
     finalItems.map(f => {
-      MongoDB.insertDocument('feed', f).then(res => {
-        console.log('item saved: ', res.result.ok);
+      MongoDB.insertDocument("feed", f).then(res => {
+        console.log("item saved: ", res.result.ok);
       });
     });
   } else {
-    console.log('No Data to Save');
+    console.log("No Data to Save");
   }
 };
 
@@ -262,38 +262,38 @@ let makeRequests = item => {
         xmlMode: true,
         decodeEntities: true
       });
-      if (item.description === '') {
-        item.description = $('meta[name="description"]').attr('content')
-          ? he.decode($('meta[name="description"]').attr('content'))
-          : '';
+      if (item.description === "") {
+        item.description = $('meta[name="description"]').attr("content")
+          ? he.decode($('meta[name="description"]').attr("content"))
+          : "";
       }
-      if (item.keywords === '') {
+      if (item.keywords === "") {
         if ($('meta[name="news_keywords"]').length > 0) {
-          item.keywords = $('meta[name="news_keywords"]').attr('content');
+          item.keywords = $('meta[name="news_keywords"]').attr("content");
         } else if ($('meta[name="keywords"]').length > 0) {
-          item.keywords = $('meta[name="keywords"]').attr('content');
+          item.keywords = $('meta[name="keywords"]').attr("content");
         } else if ($('meta[name="article:tag"]').length > 0) {
-          item.keywords = $('meta[name="article:tag"]').attr('content');
+          item.keywords = $('meta[name="article:tag"]').attr("content");
         } else if ($('meta[name="sailthru.tags"]').length > 0) {
-          item.keywords = $('meta[name="sailthru.tags"]').attr('content');
+          item.keywords = $('meta[name="sailthru.tags"]').attr("content");
         }
       }
-      if (item.author === '') {
-        item.author = $('meta[name="author"]').attr('content');
+      if (item.author === "") {
+        item.author = $('meta[name="author"]').attr("content");
       }
       if (item.img === undefined) {
-        item.img = $('meta[property="og:image:url"]').attr('content');
+        item.img = $('meta[property="og:image:url"]').attr("content");
       }
     });
     textract.fromUrl(item.url, function(error, text) {
       if (text) {
         item.stemwords = lancasterStemmer.tokenizeAndStem(
-          text.replace(/[0-9]/g, '')
+          text.replace(/[0-9]/g, "")
         );
-        item.itembody = text.replace(/\s+/gm, ' ').replace(/\W/g, ' ');
+        item.itembody = text.replace(/\s+/gm, " ").replace(/\W/g, " ");
       } else {
-        item.stemwords = '';
-        item.itembody = '';
+        item.stemwords = "";
+        item.itembody = "";
       }
       resolve(item);
     });
@@ -308,7 +308,7 @@ let fetchFeedEntry = async items => {
 let updateAndMoveFeedItem = item => {
   return new Promise(function(resolve, reject) {
     MongoDB.updateDocumentWithUpsert(
-      'feeditems',
+      "feeditems",
       { url: item.url },
       {
         url: item.url,
@@ -323,12 +323,12 @@ let updateAndMoveFeedItem = item => {
         topic: item.topic,
         subtopic: item.subtopic,
         category: item.category,
-        status: 'unclassified',
+        status: "unclassified",
         stemwords: item.stemwords
       }
     )
       .then(response => {
-        MongoDB.deleteDocument('feed', item)
+        MongoDB.deleteDocument("feed", item)
           .then(response => {
             resolve(response);
           })
@@ -352,37 +352,48 @@ let updateWithAuthorAndKeywords = item => {
           xmlMode: true,
           decodeEntities: true
         });
-        if (item.provider === 'MIT Technology Review') {
-          if (item.keywords === '') {
-            item.keywords = $('meta[name="news_keywords"]').attr('content');
+        if (item.provider === "MIT Technology Review") {
+          if (item.keywords === "") {
+            item.keywords = $('meta[name="news_keywords"]').attr("content");
             // item.keywords = $('meta[name="keywords"]').attr('content');
           }
-          if (item.author === '') {
-            item.author = $('meta[name="author"]').attr('content');
+          if (item.author === "") {
+            item.author = $('meta[name="author"]').attr("content");
           }
           if (item.img === undefined) {
-            item.img = $('meta[property="og:image:url"]').attr('content');
+            item.img = $('meta[property="og:image:url"]').attr("content");
           }
-        } else if (item.provider === 'Techcrunch') {
-          if (item.keywords === '') {
-            item.keywords = $('meta[name="sailthru.tags"]').attr('content');
+        } else if (item.provider === "Techcrunch") {
+          if (item.keywords === "") {
+            item.keywords = $('meta[name="sailthru.tags"]').attr("content");
             // item.keywords = $('meta[name="keywords"]').attr('content');
           }
-          if (item.author === '') {
-            item.author = $('meta[name="author"]').attr('content');
+          if (item.author === "") {
+            item.author = $('meta[name="author"]').attr("content");
           }
           if (item.img === undefined) {
-            item.img = $('meta[property="og:image"]').attr('content');
+            item.img = $('meta[property="og:image"]').attr("content");
+          }
+        } else if (item.provider === "Telegraph") {
+          console.log("I am in there..........");
+          if (item.keywords === "") {
+            item.keywords = $('meta[name="keywords"]').attr("content");
+          }
+          if (item.author === "") {
+            item.author = $('meta[name="DCSext.author"]').attr("content");
+          }
+          if (item.img === undefined || item.img === "") {
+            item.img = $('meta[property="og:image"]').attr("content");
           }
         } else {
-          if (item.keywords === '') {
-            item.keywords = $('meta[name="keywords"]').attr('content');
+          if (item.keywords === "") {
+            item.keywords = $('meta[name="keywords"]').attr("content");
           }
-          if (item.author === '') {
-            item.author = $('meta[name="author"]').attr('content');
+          if (item.author === "") {
+            item.author = $('meta[name="author"]').attr("content");
           }
           if (item.img === undefined) {
-            item.img = $('meta[property="og:image:url"]').attr('content');
+            item.img = $('meta[property="og:image:url"]').attr("content");
           }
         }
         console.log(item._id, item.title);
@@ -397,8 +408,8 @@ let updateWithAuthorAndKeywords = item => {
 
 let handleError = (err, item) => {
   if (err.statusCode === 404) {
-    MongoDB.deleteDocument('feeditems', item).then(response => {
-      console.log('document deleted', response.result.ok);
+    MongoDB.deleteDocument("feeditems", item).then(response => {
+      console.log("document deleted", response.result.ok);
     });
   }
 };
