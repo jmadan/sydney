@@ -355,7 +355,6 @@ let updateWithAuthorAndKeywords = item => {
         if (item.provider === "MIT Technology Review") {
           if (item.keywords === "") {
             item.keywords = $('meta[name="news_keywords"]').attr("content");
-            // item.keywords = $('meta[name="keywords"]').attr('content');
           }
           if (item.author === "") {
             item.author = $('meta[name="author"]').attr("content");
@@ -366,7 +365,6 @@ let updateWithAuthorAndKeywords = item => {
         } else if (item.provider === "Techcrunch") {
           if (item.keywords === "") {
             item.keywords = $('meta[name="sailthru.tags"]').attr("content");
-            // item.keywords = $('meta[name="keywords"]').attr('content');
           }
           if (item.author === "") {
             item.author = $('meta[name="author"]').attr("content");
@@ -375,7 +373,6 @@ let updateWithAuthorAndKeywords = item => {
             item.img = $('meta[property="og:image"]').attr("content");
           }
         } else if (item.provider === "Telegraph") {
-          console.log("I am in there..........");
           if (item.keywords === "") {
             item.keywords = $('meta[name="keywords"]').attr("content");
           }
