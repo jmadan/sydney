@@ -7,8 +7,9 @@ const synaptic = require('./synaptic');
 const MongoDB = require('./mongodb');
 const ObjectID = require('mongodb').ObjectID;
 const Neo4j = require('./neo4j');
-var Raven = require('raven');
-Raven.config(process.env.RAVEN_CONFIG).install();
+// const Raven = require('raven');
+
+// Raven.config(process.env.RAVEN_CONFIG).install();
 
 let initialjobs = new CronJob({
   cronTime: '5 0 * 1 *',
@@ -160,6 +161,7 @@ let classifyDocsBasedOnTopic = new CronJob({
           let docss = await Promise.all(
             finalDocs.map(feed.updateWithAuthorAndKeywords)
           );
+          console.log('docss:  --------- ', docss.length);
           docss.map(d => {
             if (d._id) {
               MongoDB.updateDocument(
