@@ -29,7 +29,7 @@ let initialjobs = new CronJob({
 });
 
 let fetchInitialFeeds = new CronJob({
-  cronTime: '00 14 * * *',
+  cronTime: '43 19 * * *',
   onTick: () => {
     console.log(
       'Fetching RSS feeds and saving them in feeds collection',
@@ -52,21 +52,30 @@ let fetchInitialFeeds = new CronJob({
 });
 
 let fetchFeedContents = new CronJob({
-  cronTime: '*/2 * * * *',
+  cronTime: '*/30 * * * * *',
   onTick: () => {
     console.log(
       'fetching feed content and moving to feeditems...',
       new Date().toUTCString()
     );
-    feed.fetchItems('feed', { status: 'pending body' }, 25).then(result => {
-      feed.fetchFeedEntry(result).then(res => {
-        res.map(r => {
-          console.log('feed entry: ', r.url, r.keywords, r.author);
-          feed.updateAndMoveFeedItem(r).then(result => {
-            console.log(result.result.n + ' Documents saved.');
+    feed.fetchItems('feed', { status: 'pending body' }, 10).then(result => {
+      feed
+        .fetchFeedEntry(result)
+        .then(res => {
+          res.map(r => {
+            console.log('feed entry: ', r.url, r.keywords, r.author);
+            if (r.error) {
+              console.log(r);
+            } else {
+              feed.updateAndMoveFeedItem(r).then(result => {
+                console.log(result.result.n + ' Documents saved.');
+              });
+            }
           });
+        })
+        .catch(err => {
+          console.log(err);
         });
-      });
     });
   },
   start: false
@@ -128,7 +137,7 @@ let classifyDocsBasedOnTopic = new CronJob({
           {
             $and: [{ status: 'unclassified' }, { topic: { $ne: 'All' } }]
           },
-          10
+          1
         );
         console.log('search result docs: ', docs.length);
         return docs.map(d => {
@@ -164,40 +173,51 @@ let classifyDocsBasedOnTopic = new CronJob({
           console.log('docss:  --------- ', docss.length);
           docss.map(d => {
             if (d._id) {
-              MongoDB.updateDocument(
-                'feeditems',
-                { _id: ObjectID(d._id) },
-                {
-                  $set: {
-                    status: 'classified',
-                    parentcat: d.parentcat,
-                    subcategory: d.subcategory,
-                    author: d.author,
-                    keywords: d.keywords,
-                    img: d.img
-                  }
-                }
-              )
-                .then(response => {
-                  console.log(response.value._id, response.value.topic);
-                  Neo4j.createArticle(response.value).then(result => {
-                    // console.log(
-                    //   'Article created...',
-                    //   result.result.records[0].get('a').properties.id
-                    // );
-                    Neo4j.articleAuthorRelationship(
-                      response.value.author,
-                      result.result.records[0].get('a').properties.id
-                    );
-                    Neo4j.articleProviderRelationship(response.value);
-                    if (response.value.subcategory) {
-                      Neo4j.articleSubCategoryRelationship(response.value);
-                    } else {
-                      Neo4j.articleCategoryRelationship(response.value);
-                    }
-                  });
-                })
-                .catch(err => console.log(err));
+              console.log(d._id);
+              // MongoDB.updateDocument(
+              //   'feeditems',
+              //   { _id: ObjectID(d._id) },
+              //   {
+              //     $set: {
+              //       status: 'classified',
+              //       parentcat: d.parentcat,
+              //       subcategory: d.subcategory,
+              //       author: d.author,
+              //       keywords: d.keywords,
+              //       img: d.img
+              //     }
+              //   }
+              // )
+              //   .then(response => {
+              //     console.log(response.value._id, response.value.topic);
+              //     Neo4j.createArticle(response.value).then(result => {
+              //       // console.log(
+              //       //   'Article created...',
+              //       //   result.result.records[0].get('a').properties.id
+              //       // );
+              //       if (typeof response.value.author === 'object') {
+              //         response.value.author.forEach(author => {
+              //           Neo4j.articleAuthorRelationship(
+              //             author,
+              //             result.result.records[0].get('a').properties.id
+              //           );
+              //         });
+              //       } else if (typeof response.value.author === 'string') {
+              //         Neo4j.articleAuthorRelationship(
+              //           response.value.author,
+              //           result.result.records[0].get('a').properties.id
+              //         );
+              //       }
+              //
+              //       Neo4j.articleProviderRelationship(response.value);
+              //       if (response.value.subcategory) {
+              //         Neo4j.articleSubCategoryRelationship(response.value);
+              //       } else {
+              //         Neo4j.articleCategoryRelationship(response.value);
+              //       }
+              //     });
+              //   })
+              //   .catch(err => console.log(err));
             }
           });
         } else {
@@ -221,7 +241,7 @@ let synapticTraining = new CronJob({
 function main() {
   // initialjobs.start();
   fetchInitialFeeds.start();
-  fetchFeedContents.start();
+  // fetchFeedContents.start();
   // classifyDocs.stop();
   classifyDocsBasedOnTopic.start();
   // synapticTraining.start();

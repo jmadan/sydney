@@ -31,7 +31,7 @@ let insertDocuments = (coll, docs) => {
 
 let insertDocument = (coll, doc) => {
   return new Promise((resolve, reject) => {
-    db.collection(coll).insertOne(doc, (err, result) => {
+    db.collection(coll).insert(doc, (err, result) => {
       if (err) {
         console.log('I got err: ', err);
         reject(err);

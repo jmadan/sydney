@@ -251,87 +251,99 @@ let fetchItems = (coll, query, limit) => {
 };
 
 let makeRequests = item => {
+  console.log('making requests: ', item._id, item.url);
   return new Promise((resolve, reject) => {
-    rp(item.url).then(res => {
-      let $ = cheerio.load(res, {
-        withDomLvl1: true,
-        normalizeWhitespace: true,
-        xmlMode: false,
-        decodeEntities: true
-      });
-      switch (item.provider) {
-        case 'Nature':
-          item.title = $('meta[name="dc.title"]').attr('content');
-          item.url = $('meta[name="prism.url"]').attr('content');
-          item.description = $('meta[name="dc.description"]').attr('content')
-            ? he.decode($('meta[name="dc.description"]').attr('content'))
-            : '';
-
-          let keywords = [];
-          if ($('meta[name="dc.subject"]').length > 0) {
-            $('meta[name="dc.subject"]').map((i, el) => {
-              keywords.push(String(el.attribs['content']));
-            });
-          }
-          item.keywords = keywords;
-
-          let auth = [];
-          $('meta[name="dc.creator"]').map((i, el) => {
-            auth.push(String(el.attribs['content']));
-          });
-
-          item.author = auth;
-          item.pubDate = Date.parse($('meta[name="dc.date"]').attr('content'));
-          textract.fromUrl(item.url, function(error, text) {
-            if (text) {
-              item.stemwords = lancasterStemmer.tokenizeAndStem(
-                text.replace(/[0-9]/g, '')
-              );
-              item.itembody = text.replace(/\s+/gm, ' ').replace(/\W/g, ' ');
-            } else {
-              item.stemwords = '';
-              item.itembody = '';
-            }
-            resolve(item);
-          });
-          break;
-        default:
-          if (item.description === '') {
-            item.description = $('meta[name="description"]').attr('content')
-              ? he.decode($('meta[name="description"]').attr('content'))
+    rp(item.url)
+      .then(res => {
+        let $ = cheerio.load(res, {
+          withDomLvl1: true,
+          normalizeWhitespace: true,
+          xmlMode: false,
+          decodeEntities: true
+        });
+        switch (item.provider) {
+          case 'Nature':
+            item.title = $('meta[name="dc.title"]').attr('content');
+            item.url = $('meta[name="prism.url"]').attr('content');
+            item.description = $('meta[name="dc.description"]').attr('content')
+              ? he.decode($('meta[name="dc.description"]').attr('content'))
               : '';
-          }
-          if (item.keywords === '') {
-            if ($('meta[name="news_keywords"]').length > 0) {
-              item.keywords = $('meta[name="news_keywords"]').attr('content');
-            } else if ($('meta[name="keywords"]').length > 0) {
-              item.keywords = $('meta[name="keywords"]').attr('content');
-            } else if ($('meta[name="article:tag"]').length > 0) {
-              item.keywords = $('meta[name="article:tag"]').attr('content');
-            } else if ($('meta[name="sailthru.tags"]').length > 0) {
-              item.keywords = $('meta[name="sailthru.tags"]').attr('content');
+
+            let keywords = [];
+            if ($('meta[name="dc.subject"]').length > 0) {
+              $('meta[name="dc.subject"]').map((i, el) => {
+                keywords.push(String(el.attribs['content']));
+              });
             }
-          }
-          if (item.author === '') {
-            item.author = $('meta[name="author"]').attr('content');
-          }
-          if (item.img === undefined) {
-            item.img = $('meta[property="og:image:url"]').attr('content');
-          }
-          textract.fromUrl(item.url, function(error, text) {
-            if (text) {
-              item.stemwords = lancasterStemmer.tokenizeAndStem(
-                text.replace(/[0-9]/g, '')
-              );
-              item.itembody = text.replace(/\s+/gm, ' ').replace(/\W/g, ' ');
-            } else {
-              item.stemwords = '';
-              item.itembody = '';
+            item.keywords = keywords;
+
+            let auth = [];
+            $('meta[name="dc.creator"]').map((i, el) => {
+              auth.push(String(el.attribs['content']));
+            });
+
+            item.author = auth;
+            item.pubDate = Date.parse(
+              $('meta[name="dc.date"]').attr('content')
+            );
+            textract.fromUrl(item.url, function(error, text) {
+              if (text) {
+                item.stemwords = lancasterStemmer.tokenizeAndStem(
+                  text.replace(/[0-9]/g, '')
+                );
+                item.itembody = text.replace(/\s+/gm, ' ').replace(/\W/g, ' ');
+              } else {
+                item.stemwords = '';
+                item.itembody = '';
+              }
+              resolve(item);
+            });
+            break;
+          default:
+            if (item.description === '') {
+              item.description = $('meta[name="description"]').attr('content')
+                ? he.decode($('meta[name="description"]').attr('content'))
+                : '';
             }
-            resolve(item);
-          });
-      }
-    });
+            if (item.keywords === '') {
+              if ($('meta[name="news_keywords"]').length > 0) {
+                item.keywords = $('meta[name="news_keywords"]').attr('content');
+              } else if ($('meta[name="keywords"]').length > 0) {
+                item.keywords = $('meta[name="keywords"]').attr('content');
+              } else if ($('meta[name="article:tag"]').length > 0) {
+                item.keywords = $('meta[name="article:tag"]').attr('content');
+              } else if ($('meta[name="sailthru.tags"]').length > 0) {
+                item.keywords = $('meta[name="sailthru.tags"]').attr('content');
+              }
+            }
+            if (item.author === '') {
+              item.author = $('meta[name="author"]').attr('content');
+            }
+            if (item.img === undefined) {
+              item.img = $('meta[property="og:image:url"]').attr('content');
+            }
+            textract.fromUrl(item.url, function(error, text) {
+              if (text) {
+                item.stemwords = lancasterStemmer.tokenizeAndStem(
+                  text.replace(/[0-9]/g, '')
+                );
+                item.itembody = text.replace(/\s+/gm, ' ').replace(/\W/g, ' ');
+              } else {
+                item.stemwords = '';
+                item.itembody = '';
+              }
+              resolve(item);
+            });
+        }
+      })
+      .catch(err => {
+        if (err.statusCode === 500 || err.statusCode === 404) {
+          handleError(err, item);
+        }
+        // reject({ errName: err.name, errCode: err.statusCode, item: item._id });
+        reject({ item, error: true });
+        console.log('Item with error: ', item.url, err.statusCode);
+      });
   });
 };
 
@@ -428,7 +440,6 @@ let updateWithAuthorAndKeywords = item => {
             item.img = $('meta[property="og:image:url"]').attr('content');
           }
         }
-        console.log(item._id, item.title);
         resolve(item);
       })
       .catch(err => {
@@ -439,9 +450,16 @@ let updateWithAuthorAndKeywords = item => {
 };
 
 let handleError = (err, item) => {
-  if (err.statusCode === 404) {
+  if (
+    err.statusCode === 404 ||
+    err.statusCode === 503 ||
+    err.statusCode === 500
+  ) {
     MongoDB.deleteDocument('feeditems', item).then(response => {
-      console.log('document deleted', response.result.ok);
+      console.log('document deleted from feeditems: ', response.result.ok);
+      MongoDB.deleteDocument('feed', item).then(res => {
+        console.log('document deleted from feed: ', res.result.ok);
+      });
     });
   }
 };
