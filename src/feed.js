@@ -354,38 +354,76 @@ let fetchFeedEntry = async items => {
 
 let updateAndMoveFeedItem = item => {
   return new Promise(function(resolve, reject) {
-    MongoDB.updateDocumentWithUpsert(
-      'feeditems',
-      { url: item.url },
-      {
-        url: item.url,
-        title: item.title,
-        description: item.description,
-        type: item.type,
-        keywords: item.keywords,
-        img: item.img,
-        author: item.author,
-        pubDate: item.pubDate,
-        provider: item.provider,
-        topic: item.topic,
-        subtopic: item.subtopic,
-        category: item.category,
-        status: 'unclassified',
-        stemwords: item.stemwords
-      }
-    )
-      .then(response => {
-        MongoDB.deleteDocument('feed', item)
+    MongoDB.getDocuments('feeditems', {
+      $OR: [{ url: item.url }, { title: item.title }]
+    }).then(result => {
+      if (result.length > 0) {
+        MongoDB.updateDocumentWithUpsert(
+          'feeditems',
+          { url: item.url },
+          {
+            url: item.url,
+            title: item.title,
+            description: item.description,
+            type: item.type,
+            keywords: item.keywords,
+            img: item.img,
+            author: item.author,
+            pubDate: item.pubDate,
+            provider: item.provider,
+            topic: item.topic,
+            subtopic: item.subtopic,
+            category: item.category,
+            stemwords: item.stemwords
+          }
+        )
           .then(response => {
-            resolve(response);
+            MongoDB.deleteDocument('feed', item)
+              .then(response => {
+                resolve(response);
+              })
+              .catch(err => {
+                console.log(err);
+              });
           })
-          .catch(err => {
-            console.log(err);
+          .catch(e => {
+            console.log(e);
           });
-      })
-      .catch(e => {
-        console.log(e);
-      });
+      } else {
+        MongoDB.updateDocumentWithUpsert(
+          'feeditems',
+          { url: item.url },
+          {
+            url: item.url,
+            title: item.title,
+            description: item.description,
+            type: item.type,
+            keywords: item.keywords,
+            img: item.img,
+            author: item.author,
+            pubDate: item.pubDate,
+            provider: item.provider,
+            topic: item.topic,
+            subtopic: item.subtopic,
+            category: item.category,
+            status: 'unclassified',
+            stemwords: item.stemwords
+          }
+        )
+          .then(response => {
+            MongoDB.deleteDocument('feed', item)
+              .then(response => {
+                resolve(response);
+              })
+              .catch(err => {
+                console.log(err);
+              });
+          })
+          .catch(e => {
+            console.log(e);
+          });
+      }
+    });
   });
 };
 
