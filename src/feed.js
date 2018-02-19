@@ -9,12 +9,10 @@ const he = require('he');
 
 const lancasterStemmer = natural.LancasterStemmer;
 
-const DBURI = process.env.MONGODB_URI;
-
 let getRSSFeedProviders = () => {
   return new Promise(function(resolve) {
     MongoDB.getDocuments('feedproviders', {
-      $and: [{name: "Engadget"},{status: { $in: ['active', 'Active'] }}]
+      status: { $in: ['active', 'Active'] }
     }).then(providerList => {
       resolve({ list: providerList });
     });
@@ -43,6 +41,7 @@ let getFeedItems = provider => {
         let lastBuildDate = Date.parse($('lastBuildDate').text());
         switch (provider.name) {
           case 'The Atlantic':
+            console.log('I am in the Atlantic');
             $('entry').each(function() {
               feedList.push({
                 title: $(this)
@@ -73,6 +72,7 @@ let getFeedItems = provider => {
             });
             break;
           case 'The Verge':
+            console.log('I am in the Verge');
             $('entry').each(function() {
               feedList.push({
                 title: $(this)
@@ -100,6 +100,7 @@ let getFeedItems = provider => {
             });
             break;
           case 'Nature':
+            console.log('I am in Nature');
             $('item').each(function() {
               feedList.push({
                 title: $(this)
@@ -120,7 +121,7 @@ let getFeedItems = provider => {
             });
             break;
           default:
-          console.log('I am in the default');
+            console.log('I am in the default');
             if ($('item').length) {
               $('item').each(function() {
                 feedList.push({
@@ -211,7 +212,10 @@ let updateProvidersTime = provider => {
     { _id: ObjectID(provider._id) },
     { $set: { lastPulled: new Date().toISOString() } }
   ).then(response => {
-    console.log('response after time update: ', response.ok);
+    console.log(
+      'response after updating time for feed parsing time: ',
+      response.ok
+    );
   });
 };
 
@@ -230,14 +234,11 @@ let saveRssFeed = items => {
         return i;
       }
     });
-    MongoDB.insertDocuments('feed', items).then(res => {
-      console.log('item saved: ', res.result.ok);
-    });
-    // items.map(f => {
-    //   MongoDB.insertDocument('feed', f).then(res => {
-    //     console.log('item saved: ', res.result.ok);
-    //   });
-    // });
+    if (finalItems.length > 0) {
+      MongoDB.insertDocuments('feed', finalItems).then(res => {
+        console.log('item saved: ', res.result.ok);
+      });
+    }
   } else {
     console.log('No Data to Save');
   }
@@ -355,109 +356,75 @@ let fetchFeedEntry = async items => {
 
 let updateFeedItem = item => {
   return new Promise(function(resolve, reject) {
-        MongoDB.updateDocumentWithUpsert(
-          'feeditems',
-          { _id: ObjectID(item._id) },
-          {
-            url: item.url,
-            title: item.title,
-            description: item.description,
-            type: item.type,
-            keywords: item.keywords,
-            img: item.img,
-            author: item.author,
-            pubDate: item.pubDate,
-            provider: item.provider,
-            topic: item.topic,
-            subtopic: item.subtopic,
-            category: item.category,
-            status: 'unclassified',
-            stemwords: item.stemwords
-          }
-        )
+    MongoDB.updateDocumentWithUpsert(
+      'feeditems',
+      { _id: ObjectID(item._id) },
+      {
+        url: item.url,
+        title: item.title,
+        description: item.description,
+        type: item.type,
+        keywords: item.keywords,
+        img: item.img,
+        author: item.author,
+        pubDate: item.pubDate,
+        provider: item.provider,
+        topic: item.topic,
+        subtopic: item.subtopic,
+        category: item.category,
+        status: 'unclassified',
+        stemwords: item.stemwords
+      }
+    )
+      .then(response => {
+        MongoDB.deleteDocument('feed', item)
           .then(response => {
-            MongoDB.deleteDocument('feed', item)
-              .then(response => {
-                resolve(response);
-              })
-              .catch(err => {
-                console.log(err);
-              });
+            resolve(response);
           })
-          .catch(e => {
-            console.log(e);
+          .catch(err => {
+            console.log(err);
           });
-
-        // MongoDB.updateDocumentWithUpsert(
-        //   'feeditems',
-        //   { url: item.url },
-        //   {
-        //     url: item.url,
-        //     title: item.title,
-        //     description: item.description,
-        //     type: item.type,
-        //     keywords: item.keywords,
-        //     img: item.img,
-        //     author: item.author,
-        //     pubDate: item.pubDate,
-        //     provider: item.provider,
-        //     topic: item.topic,
-        //     subtopic: item.subtopic,
-        //     category: item.category,
-        //     status: 'unclassified',
-        //     stemwords: item.stemwords
-        //   }
-        // )
-        //   .then(response => {
-        //     MongoDB.deleteDocument('feed', item)
-        //       .then(response => {
-        //         resolve(response);
-        //       })
-        //       .catch(err => {
-        //         console.log(err);
-        //       });
-        //   })
-        //   .catch(e => {
-        //     console.log(e);
-        //   });
+      })
+      .catch(e => {
+        console.log(e);
+      });
   });
 };
 
 let moveUniqueFeedItem = item => {
   return new Promise(function(resolve, reject) {
-        MongoDB.updateDocumentWithUpsert(
-          'feeditems',
-          { url: item.url },
-          {
-            url: item.url,
-            title: item.title,
-            description: item.description ? item.description : '',
-            type: item.type,
-            keywords: item.keywords ? item.keywords : '',
-            img: item.img ? item.img : '',
-            author: item.author ? item.author : '',
-            pubDate: item.pubDate ? item.pubDate : '',
-            provider: item.provider,
-            topic: item.topic,
-            subtopic: item.subtopic ? item.subtopic : '',
-            category: item.category ? item.category : '',
-            status: 'pending body',
-            stemwords: item.stemwords ? item.stemwords : ''
-          }
-        )
+    MongoDB.updateDocumentWithUpsert(
+      'feeditems',
+      { url: item.url },
+      {
+        url: item.url,
+        title: item.title,
+        description: item.description ? item.description : '',
+        type: item.type,
+        keywords: item.keywords ? item.keywords : '',
+        img: item.img ? item.img : '',
+        author: item.author ? item.author : '',
+        pubDate: item.pubDate ? item.pubDate : '',
+        provider: item.provider,
+        topic: item.topic,
+        subtopic: item.subtopic ? item.subtopic : '',
+        category: item.category ? item.category : '',
+        status: 'pending body',
+        stemwords: item.stemwords ? item.stemwords : ''
+      }
+    )
+      .then(response => {
+        MongoDB.deleteDocument('feed', item)
           .then(response => {
-            MongoDB.deleteDocument('feed', item)
-              .then(response => {
-                resolve(response);
-              })
-              .catch(err => {
-                console.log(err);
-              });
+            resolve(response);
           })
-          .catch(e => {
-            console.log(e);
+          .catch(err => {
+            console.log(err);
           });
-
+      })
+      .catch(e => {
+        console.log(e);
+      });
   });
 };
 
@@ -472,43 +439,43 @@ let updateWithAuthorAndKeywords = item => {
           decodeEntities: true
         });
         if (item.provider === 'MIT Technology Review') {
-          if (item.keywords === '') {
+          if (!item.keywords) {
             item.keywords = $('meta[name="news_keywords"]').attr('content');
           }
-          if (item.author === '') {
+          if (!item.author) {
             item.author = $('meta[name="author"]').attr('content');
           }
-          if (item.img === undefined) {
+          if (!item.img) {
             item.img = $('meta[property="og:image:url"]').attr('content');
           }
         } else if (item.provider === 'Techcrunch') {
-          if (item.keywords === '') {
+          if (!item.keywords) {
             item.keywords = $('meta[name="sailthru.tags"]').attr('content');
           }
-          if (item.author === '') {
+          if (!item.author) {
             item.author = $('meta[name="author"]').attr('content');
           }
-          if (item.img === undefined) {
+          if (!item.img) {
             item.img = $('meta[property="og:image"]').attr('content');
           }
         } else if (item.provider === 'Telegraph') {
-          if (item.keywords === '') {
+          if (!item.keywords) {
             item.keywords = $('meta[name="keywords"]').attr('content');
           }
-          if (item.author === '') {
+          if (!item.author) {
             item.author = $('meta[name="DCSext.author"]').attr('content');
           }
-          if (item.img === undefined || item.img === '') {
+          if (!item.img) {
             item.img = $('meta[property="og:image"]').attr('content');
           }
         } else {
-          if (item.keywords === '') {
+          if (!item.keywords) {
             item.keywords = $('meta[name="keywords"]').attr('content');
           }
-          if (item.author === '') {
+          if (!item.author) {
             item.author = $('meta[name="author"]').attr('content');
           }
-          if (item.img === undefined) {
+          if (!item.img) {
             item.img = $('meta[property="og:image:url"]').attr('content');
           }
         }

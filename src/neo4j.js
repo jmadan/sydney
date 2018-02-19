@@ -42,7 +42,7 @@ let articleCategoryRelationship = article => {
   let query =
     'MERGE (c:CATEGORY {id: $categoryId}) WITH c \
     MATCH (a:ARTICLE {id: $id}) \
-    CREATE (a)-[r:HAS_CATEGORY]->(c) RETURN a,r';
+    MERGE (a)-[r:HAS_CATEGORY]->(c) RETURN a,r';
   session
     .run(query, {
       id: article._id.toString(),
@@ -62,7 +62,7 @@ let articleSubCategoryRelationship = article => {
     'MERGE (c:CATEGORY {id: $categoryId}) \
     ON CREATE SET c.name=$subcategory_name  WITH c \
     MATCH (a:ARTICLE {id: $id}) \
-    CREATE (a)-[r:HAS_CATEGORY]->(c) RETURN a,r';
+    MERGE (a)-[r:HAS_CATEGORY]->(c) RETURN a,r';
   session
     .run(query, {
       id: article._id.toString(),
@@ -106,7 +106,7 @@ let articleProviderRelationship = article => {
   let query =
     'MERGE (p:PROVIDER {name: $provider}) WITH p \
     MATCH (a:ARTICLE {id: $id}) \
-    CREATE (a)-[r:PUBLISHED_BY {pubDate: $published_date}]->(p) RETURN a, r';
+    MERGE (a)-[r:PUBLISHED_BY {pubDate: $published_date}]->(p) RETURN a, r';
   session
     .run(query, {
       id: article._id.toString(),

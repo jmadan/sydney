@@ -132,7 +132,7 @@ let checkDocument = (coll, query) => {
   return new Promise((resolve, reject) => {
     db
       .collection(coll)
-      .find(query, {_id: 1})
+      .find(query, { _id: 1 })
       .limit(1)
       .toArray((err, docs) => {
         if (err) {

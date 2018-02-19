@@ -29,7 +29,7 @@ let initialjobs = new CronJob({
 });
 
 let fetchInitialFeeds = new CronJob({
-  cronTime: '57 16 * * *',
+  cronTime: '43 22 * * *',
   onTick: () => {
     console.log(
       'Fetching RSS feeds and saving them in feeds collection',
@@ -58,48 +58,51 @@ let moveFeedItems = new CronJob({
       'fetching feed content and moving to feeditems...',
       new Date().toUTCString()
     );
-    feed.fetchItems('feed', { status: 'pending body' }, 10).then(result => {
+    feed.fetchItems('feed', { status: 'pending body' }, 25).then(result => {
       result.map(item => {
         feed.moveUniqueFeedItem(item).then(response => {
-          console.log(response.result.n, 'Document Moved and Deleted...');
+          console.log(response.result.ok, 'Document Moved and Deleted...');
         });
-      })
+      });
     });
   },
   start: false
 });
 
 let updateFeedItemContent = new CronJob({
-  cronTime: '*/30 * * * * *',
+  cronTime: '*/2 * * * *',
   onTick: () => {
     console.log(
-      'fetching feed content and moving to feeditems...',
+      'Updating feed item content with keywords, author, url from article body...',
       new Date().toUTCString()
     );
-    feed.fetchItems('feeditems', { status: 'pending body' }, 10).then(result => {
-      feed
-        .fetchFeedEntry(result)
-        .then(res => {
-          res.map(r => {
-            console.log('feed entry: ', r.url, r.keywords, r.author);
-            if (r.error) {
-              console.log(r);
-            } else {
-              feed.updateFeedItem(r).then(result => {
-                console.log(result.result.n + ' Documents updated and saved.');
-              });
-            }
+    feed
+      .fetchItems('feeditems', { status: 'pending body' }, 10)
+      .then(result => {
+        feed
+          .fetchFeedEntry(result)
+          .then(res => {
+            res.map(r => {
+              console.log('feed entry: ', r.url, r.keywords, r.author);
+              if (r.error) {
+                console.log(r);
+              } else {
+                feed.updateFeedItem(r).then(response => {
+                  console.log(
+                    'Documents updated and saved: ',
+                    response.result.ok
+                  );
+                });
+              }
+            });
+          })
+          .catch(err => {
+            console.log(err);
           });
-        })
-        .catch(err => {
-          console.log(err);
-        });
-    });
+      });
   },
   start: false
 });
-
-
 
 let saveClassifiedDocs = doc => {
   MongoDB.updateDocument(
@@ -157,7 +160,7 @@ let classifyDocsBasedOnTopic = new CronJob({
           {
             $and: [{ status: 'unclassified' }, { topic: { $ne: 'All' } }]
           },
-          1
+          10
         );
         console.log('search result docs: ', docs.length);
         return docs.map(d => {
@@ -180,64 +183,63 @@ let classifyDocsBasedOnTopic = new CronJob({
       })
       .then(async documents => {
         if (documents.length) {
-          let finalDocs = documents.filter(d => {
-            let dateLimit = new Date();
-            dateLimit.setDate(dateLimit.getDate() - 30);
-            if (new Date(d.pubDate) >= dateLimit) {
-              return d;
-            }
-          });
+          // let finalDocs = documents.filter(d => {
+          //   let dateLimit = new Date();
+          //   dateLimit.setDate(dateLimit.getDate() - 5);
+          //   if (new Date(d.pubDate) >= dateLimit) {
+          //     return d;
+          //   }
+          // });
           let docss = await Promise.all(
-            finalDocs.map(feed.updateWithAuthorAndKeywords)
+            documents.map(feed.updateWithAuthorAndKeywords)
           );
-          console.log('docss:  --------- ', docss.length);
           docss.map(d => {
             if (d._id) {
-              console.log(d._id);
-              // MongoDB.updateDocument(
-              //   'feeditems',
-              //   { _id: ObjectID(d._id) },
-              //   {
-              //     $set: {
-              //       status: 'classified',
-              //       parentcat: d.parentcat,
-              //       subcategory: d.subcategory,
-              //       author: d.author,
-              //       keywords: d.keywords,
-              //       img: d.img
-              //     }
-              //   }
-              // )
-              //   .then(response => {
-              //     console.log(response.value._id, response.value.topic);
-              //     Neo4j.createArticle(response.value).then(result => {
-              //       // console.log(
-              //       //   'Article created...',
-              //       //   result.result.records[0].get('a').properties.id
-              //       // );
-              //       if (typeof response.value.author === 'object') {
-              //         response.value.author.forEach(author => {
-              //           Neo4j.articleAuthorRelationship(
-              //             author,
-              //             result.result.records[0].get('a').properties.id
-              //           );
-              //         });
-              //       } else if (typeof response.value.author === 'string') {
-              //         Neo4j.articleAuthorRelationship(
-              //           response.value.author,
-              //           result.result.records[0].get('a').properties.id
-              //         );
-              //       }
-              //
-              //       Neo4j.articleProviderRelationship(response.value);
-              //       if (response.value.subcategory) {
-              //         Neo4j.articleSubCategoryRelationship(response.value);
-              //       } else {
-              //         Neo4j.articleCategoryRelationship(response.value);
-              //       }
-              //     });
-              //   })
-              //   .catch(err => console.log(err));
+              console.log('before classifying updating the article: ', d._id);
+              MongoDB.updateDocument(
+                'feeditems',
+                { _id: ObjectID(d._id) },
+                {
+                  $set: {
+                    status: 'classified',
+                    parentcat: d.parentcat,
+                    subcategory: d.subcategory,
+                    author: d.author,
+                    keywords: d.keywords,
+                    img: d.img
+                  }
+                }
+              )
+                .then(response => {
+                  console.log(response.value._id, response.value.topic);
+                  // Neo4j.createArticle(response.value).then(result => {
+                  //   // console.log(
+                  //   //   'Article created...',
+                  //   //   result.result.records[0].get('a').properties.id
+                  //   // );
+                  //   if (typeof response.value.author === 'object') {
+                  //     response.value.author.forEach(author => {
+                  //       Neo4j.articleAuthorRelationship(
+                  //         author,
+                  //         result.result.records[0].get('a').properties.id
+                  //       );
+                  //     });
+                  //   } else if (typeof response.value.author === 'string') {
+                  //     Neo4j.articleAuthorRelationship(
+                  //       response.value.author,
+                  //       result.result.records[0].get('a').properties.id
+                  //     );
+                  //   }
+                  //
+                  //   Neo4j.articleProviderRelationship(response.value);
+                  //   if (response.value.subcategory) {
+                  //     Neo4j.articleSubCategoryRelationship(response.value);
+                  //   } else {
+                  //     Neo4j.articleCategoryRelationship(response.value);
+                  //   }
+                  // });
+                })
+                .catch(err => console.log(err));
             }
           });
         } else {
@@ -262,9 +264,9 @@ function main() {
   // initialjobs.start();
   fetchInitialFeeds.start();
   moveFeedItems.start();
-  // fetchFeedContents.start();
+  updateFeedItemContent.start();
   // classifyDocs.stop();
-  // classifyDocsBasedOnTopic.start();
+  classifyDocsBasedOnTopic.start();
   // synapticTraining.start();
   console.log('Started them all....');
 }
