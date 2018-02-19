@@ -84,7 +84,7 @@ let articleAuthorRelationship = (author, articleId) => {
     query =
       'MERGE (au:AUTHOR {name: $author}) WITH au \
       MATCH (a:ARTICLE {id: $id}) \
-      CREATE (a)-[r:AUTHORED_BY]->(au) RETURN a, r';
+      MERGE (a)-[r:AUTHORED_BY]->(au) RETURN a, r';
   } else {
     query = 'MATCH (a:ARTICLE {id: $id}) RETURN a';
   }

@@ -2,7 +2,7 @@
 
 const MongoClient = require('mongodb');
 const ObjectID = MongoClient.ObjectID;
-const DBURI = process.env.MONGODB_URI;
+const DBURI = process.env.MONGODB_TEST_URI;
 let db;
 
 MongoClient.connect(
@@ -14,7 +14,7 @@ MongoClient.connect(
     if (err) {
       throw err;
     }
-    db = client.db('manhattan');
+    db = client.db('heroku_0jg9kj1s');
   }
 );
 
@@ -128,6 +128,21 @@ let updateDocumentWithUpsert = (coll, findQuery, updateQuery) => {
   });
 };
 
+let checkDocument = (coll, query) => {
+  return new Promise((resolve, reject) => {
+    db
+      .collection(coll)
+      .find(query, {_id: 1})
+      .limit(1)
+      .toArray((err, docs) => {
+        if (err) {
+          reject(err);
+        }
+        resolve(docs);
+      });
+  });
+};
+
 module.exports = {
   insertDocuments,
   updateDocument,
@@ -135,5 +150,6 @@ module.exports = {
   insertDocument,
   deleteDocument,
   getDocumentsWithLimit,
-  updateDocumentWithUpsert
+  updateDocumentWithUpsert,
+  checkDocument
 };

@@ -29,7 +29,7 @@ let initialjobs = new CronJob({
 });
 
 let fetchInitialFeeds = new CronJob({
-  cronTime: '43 19 * * *',
+  cronTime: '57 16 * * *',
   onTick: () => {
     console.log(
       'Fetching RSS feeds and saving them in feeds collection',
@@ -51,14 +51,32 @@ let fetchInitialFeeds = new CronJob({
   start: false
 });
 
-let fetchFeedContents = new CronJob({
-  cronTime: '*/30 * * * * *',
+let moveFeedItems = new CronJob({
+  cronTime: '*/1 * * * *',
   onTick: () => {
     console.log(
       'fetching feed content and moving to feeditems...',
       new Date().toUTCString()
     );
     feed.fetchItems('feed', { status: 'pending body' }, 10).then(result => {
+      result.map(item => {
+        feed.moveUniqueFeedItem(item).then(response => {
+          console.log(response.result.n, 'Document Moved and Deleted...');
+        });
+      })
+    });
+  },
+  start: false
+});
+
+let updateFeedItemContent = new CronJob({
+  cronTime: '*/30 * * * * *',
+  onTick: () => {
+    console.log(
+      'fetching feed content and moving to feeditems...',
+      new Date().toUTCString()
+    );
+    feed.fetchItems('feeditems', { status: 'pending body' }, 10).then(result => {
       feed
         .fetchFeedEntry(result)
         .then(res => {
@@ -67,8 +85,8 @@ let fetchFeedContents = new CronJob({
             if (r.error) {
               console.log(r);
             } else {
-              feed.updateAndMoveFeedItem(r).then(result => {
-                console.log(result.result.n + ' Documents saved.');
+              feed.updateFeedItem(r).then(result => {
+                console.log(result.result.n + ' Documents updated and saved.');
               });
             }
           });
@@ -80,6 +98,8 @@ let fetchFeedContents = new CronJob({
   },
   start: false
 });
+
+
 
 let saveClassifiedDocs = doc => {
   MongoDB.updateDocument(
@@ -241,9 +261,10 @@ let synapticTraining = new CronJob({
 function main() {
   // initialjobs.start();
   fetchInitialFeeds.start();
+  moveFeedItems.start();
   // fetchFeedContents.start();
   // classifyDocs.stop();
-  classifyDocsBasedOnTopic.start();
+  // classifyDocsBasedOnTopic.start();
   // synapticTraining.start();
   console.log('Started them all....');
 }

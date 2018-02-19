@@ -14,7 +14,7 @@ const DBURI = process.env.MONGODB_URI;
 let getRSSFeedProviders = () => {
   return new Promise(function(resolve) {
     MongoDB.getDocuments('feedproviders', {
-      status: { $in: ['active', 'Active'] }
+      $and: [{name: "Engadget"},{status: { $in: ['active', 'Active'] }}]
     }).then(providerList => {
       resolve({ list: providerList });
     });
@@ -120,6 +120,7 @@ let getFeedItems = provider => {
             });
             break;
           default:
+          console.log('I am in the default');
             if ($('item').length) {
               $('item').each(function() {
                 feedList.push({
@@ -352,47 +353,11 @@ let fetchFeedEntry = async items => {
   return itemsArray;
 };
 
-let updateAndMoveFeedItem = item => {
+let updateFeedItem = item => {
   return new Promise(function(resolve, reject) {
-    MongoDB.getDocuments('feeditems', {
-      $OR: [{ url: item.url }, { title: item.title }]
-    }).then(result => {
-      if (result.length > 0) {
         MongoDB.updateDocumentWithUpsert(
           'feeditems',
-          { url: item.url },
-          {
-            url: item.url,
-            title: item.title,
-            description: item.description,
-            type: item.type,
-            keywords: item.keywords,
-            img: item.img,
-            author: item.author,
-            pubDate: item.pubDate,
-            provider: item.provider,
-            topic: item.topic,
-            subtopic: item.subtopic,
-            category: item.category,
-            stemwords: item.stemwords
-          }
-        )
-          .then(response => {
-            MongoDB.deleteDocument('feed', item)
-              .then(response => {
-                resolve(response);
-              })
-              .catch(err => {
-                console.log(err);
-              });
-          })
-          .catch(e => {
-            console.log(e);
-          });
-      } else {
-        MongoDB.updateDocumentWithUpsert(
-          'feeditems',
-          { url: item.url },
+          { _id: ObjectID(item._id) },
           {
             url: item.url,
             title: item.title,
@@ -422,8 +387,77 @@ let updateAndMoveFeedItem = item => {
           .catch(e => {
             console.log(e);
           });
-      }
-    });
+
+        // MongoDB.updateDocumentWithUpsert(
+        //   'feeditems',
+        //   { url: item.url },
+        //   {
+        //     url: item.url,
+        //     title: item.title,
+        //     description: item.description,
+        //     type: item.type,
+        //     keywords: item.keywords,
+        //     img: item.img,
+        //     author: item.author,
+        //     pubDate: item.pubDate,
+        //     provider: item.provider,
+        //     topic: item.topic,
+        //     subtopic: item.subtopic,
+        //     category: item.category,
+        //     status: 'unclassified',
+        //     stemwords: item.stemwords
+        //   }
+        // )
+        //   .then(response => {
+        //     MongoDB.deleteDocument('feed', item)
+        //       .then(response => {
+        //         resolve(response);
+        //       })
+        //       .catch(err => {
+        //         console.log(err);
+        //       });
+        //   })
+        //   .catch(e => {
+        //     console.log(e);
+        //   });
+  });
+};
+
+let moveUniqueFeedItem = item => {
+  return new Promise(function(resolve, reject) {
+        MongoDB.updateDocumentWithUpsert(
+          'feeditems',
+          { url: item.url },
+          {
+            url: item.url,
+            title: item.title,
+            description: item.description ? item.description : '',
+            type: item.type,
+            keywords: item.keywords ? item.keywords : '',
+            img: item.img ? item.img : '',
+            author: item.author ? item.author : '',
+            pubDate: item.pubDate ? item.pubDate : '',
+            provider: item.provider,
+            topic: item.topic,
+            subtopic: item.subtopic ? item.subtopic : '',
+            category: item.category ? item.category : '',
+            status: 'pending body',
+            stemwords: item.stemwords ? item.stemwords : ''
+          }
+        )
+          .then(response => {
+            MongoDB.deleteDocument('feed', item)
+              .then(response => {
+                resolve(response);
+              })
+              .catch(err => {
+                console.log(err);
+              });
+          })
+          .catch(e => {
+            console.log(e);
+          });
+
   });
 };
 
@@ -511,6 +545,7 @@ module.exports = {
   saveRssFeed,
   fetchItems,
   fetchFeedEntry,
-  updateAndMoveFeedItem,
-  updateWithAuthorAndKeywords
+  updateFeedItem,
+  updateWithAuthorAndKeywords,
+  moveUniqueFeedItem
 };
