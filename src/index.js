@@ -7,9 +7,9 @@ const synaptic = require('./synaptic');
 const MongoDB = require('./mongodb');
 const ObjectID = require('mongodb').ObjectID;
 const Neo4j = require('./neo4j');
-// const Raven = require('raven');
+const Raven = require('raven');
 
-// Raven.config(process.env.RAVEN_CONFIG).install();
+Raven.config(process.env.RAVEN_CONFIG).install();
 
 let initialjobs = new CronJob({
   cronTime: '5 0 * 1 *',
@@ -29,7 +29,7 @@ let initialjobs = new CronJob({
 });
 
 let fetchInitialFeeds = new CronJob({
-  cronTime: '09 14 * * *',
+  cronTime: '30 14 * * *',
   onTick: () => {
     console.log(
       'Fetching RSS feeds and saving them in feeds collection',
@@ -160,7 +160,7 @@ let classifyDocsBasedOnTopic = new CronJob({
           {
             $and: [{ status: 'unclassified' }, { topic: { $ne: 'All' } }]
           },
-          5
+          10
         );
         console.log('search result docs: ', docs.length);
         return docs.map(d => {
@@ -217,7 +217,11 @@ let classifyDocsBasedOnTopic = new CronJob({
                     //   'Article created...',
                     //   result.result.records[0].get('a').properties.id
                     // );
-                    if (typeof response.value.author === 'object' && response.value.author !== null && response.value.author.length > 0) {
+                    if (
+                      typeof response.value.author === 'object' &&
+                      response.value.author !== null &&
+                      response.value.author.length > 0
+                    ) {
                       response.value.author.forEach(author => {
                         Neo4j.articleAuthorRelationship(
                           author,
@@ -262,9 +266,9 @@ let synapticTraining = new CronJob({
 
 function main() {
   // initialjobs.start();
-  // fetchInitialFeeds.start();
-  // moveFeedItems.start();
-  // updateFeedItemContent.start();
+  fetchInitialFeeds.start();
+  moveFeedItems.start();
+  updateFeedItemContent.start();
   // classifyDocs.stop();
   classifyDocsBasedOnTopic.start();
   // synapticTraining.start();
