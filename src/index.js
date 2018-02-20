@@ -7,9 +7,9 @@ const synaptic = require('./synaptic');
 const MongoDB = require('./mongodb');
 const ObjectID = require('mongodb').ObjectID;
 const Neo4j = require('./neo4j');
-// const Raven = require('raven');
+const Raven = require('raven');
 
-// Raven.config(process.env.RAVEN_CONFIG).install();
+Raven.config(process.env.RAVEN_CONFIG).install();
 
 let initialjobs = new CronJob({
   cronTime: '5 0 * 1 *',
@@ -29,7 +29,7 @@ let initialjobs = new CronJob({
 });
 
 let fetchInitialFeeds = new CronJob({
-  cronTime: '00 14 * * *',
+  cronTime: '30 14 * * *',
   onTick: () => {
     console.log(
       'Fetching RSS feeds and saving them in feeds collection',
@@ -51,23 +51,55 @@ let fetchInitialFeeds = new CronJob({
   start: false
 });
 
-let fetchFeedContents = new CronJob({
-  cronTime: '*/2 * * * *',
+let moveFeedItems = new CronJob({
+  cronTime: '*/1 * * * *',
   onTick: () => {
     console.log(
       'fetching feed content and moving to feeditems...',
       new Date().toUTCString()
     );
     feed.fetchItems('feed', { status: 'pending body' }, 25).then(result => {
-      feed.fetchFeedEntry(result).then(res => {
-        res.map(r => {
-          console.log('feed entry: ', r.url, r.keywords, r.author);
-          feed.updateAndMoveFeedItem(r).then(result => {
-            console.log(result.result.n + ' Documents saved.');
-          });
+      result.map(item => {
+        feed.moveUniqueFeedItem(item).then(response => {
+          console.log(response.result.ok, 'Document Moved and Deleted...');
         });
       });
     });
+  },
+  start: false
+});
+
+let updateFeedItemContent = new CronJob({
+  cronTime: '*/2 * * * *',
+  onTick: () => {
+    console.log(
+      'Updating feed item content with keywords, author, url from article body...',
+      new Date().toUTCString()
+    );
+    feed
+      .fetchItems('feeditems', { status: 'pending body' }, 10)
+      .then(result => {
+        feed
+          .fetchFeedEntry(result)
+          .then(res => {
+            res.map(r => {
+              console.log('feed entry: ', r.url, r.keywords, r.author);
+              if (r.error) {
+                console.log(r);
+              } else {
+                feed.updateFeedItem(r).then(response => {
+                  console.log(
+                    'Documents updated and saved: ',
+                    response.result.ok
+                  );
+                });
+              }
+            });
+          })
+          .catch(err => {
+            console.log(err);
+          });
+      });
   },
   start: false
 });
@@ -118,7 +150,7 @@ let classifyDocs = new CronJob({
 });
 
 let classifyDocsBasedOnTopic = new CronJob({
-  cronTime: '*/1 * * * *', //Seconds: 0-59, Minutes: 0-59, Hours: 0-23, Day of Month: 1-31, Months: 0-11 ,Day of Week: 0-6
+  cronTime: '*/30 * * * * *', //Seconds: 0-59, Minutes: 0-59, Hours: 0-23, Day of Month: 1-31, Months: 0-11 ,Day of Week: 0-6
   onTick: async () => {
     console.log('Initiating article classification based on Topic...');
     MongoDB.getDocuments('categories', {})
@@ -151,19 +183,19 @@ let classifyDocsBasedOnTopic = new CronJob({
       })
       .then(async documents => {
         if (documents.length) {
-          let finalDocs = documents.filter(d => {
-            let dateLimit = new Date();
-            dateLimit.setDate(dateLimit.getDate() - 30);
-            if (new Date(d.pubDate) >= dateLimit) {
-              return d;
-            }
-          });
+          // let finalDocs = documents.filter(d => {
+          //   let dateLimit = new Date();
+          //   dateLimit.setDate(dateLimit.getDate() - 5);
+          //   if (new Date(d.pubDate) >= dateLimit) {
+          //     return d;
+          //   }
+          // });
           let docss = await Promise.all(
-            finalDocs.map(feed.updateWithAuthorAndKeywords)
+            documents.map(feed.updateWithAuthorAndKeywords)
           );
-          console.log('docss:  --------- ', docss.length);
           docss.map(d => {
             if (d._id) {
+              console.log('before classifying updating the article: ', d._id);
               MongoDB.updateDocument(
                 'feeditems',
                 { _id: ObjectID(d._id) },
@@ -185,10 +217,24 @@ let classifyDocsBasedOnTopic = new CronJob({
                     //   'Article created...',
                     //   result.result.records[0].get('a').properties.id
                     // );
-                    Neo4j.articleAuthorRelationship(
-                      response.value.author,
-                      result.result.records[0].get('a').properties.id
-                    );
+                    if (
+                      typeof response.value.author === 'object' &&
+                      response.value.author !== null &&
+                      response.value.author.length > 0
+                    ) {
+                      response.value.author.forEach(author => {
+                        Neo4j.articleAuthorRelationship(
+                          author,
+                          result.result.records[0].get('a').properties.id
+                        );
+                      });
+                    } else if (typeof response.value.author === 'string') {
+                      Neo4j.articleAuthorRelationship(
+                        response.value.author,
+                        result.result.records[0].get('a').properties.id
+                      );
+                    }
+
                     Neo4j.articleProviderRelationship(response.value);
                     if (response.value.subcategory) {
                       Neo4j.articleSubCategoryRelationship(response.value);
@@ -221,7 +267,8 @@ let synapticTraining = new CronJob({
 function main() {
   // initialjobs.start();
   fetchInitialFeeds.start();
-  fetchFeedContents.start();
+  moveFeedItems.start();
+  updateFeedItemContent.start();
   // classifyDocs.stop();
   classifyDocsBasedOnTopic.start();
   // synapticTraining.start();

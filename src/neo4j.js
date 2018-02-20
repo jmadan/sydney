@@ -40,18 +40,19 @@ let createArticle = article => {
 let articleCategoryRelationship = article => {
   const session = driver.session();
   let query =
-    'MERGE (c:CATEGORY {id: $categoryId}) WITH c \
+    'MERGE (c:CATEGORY {id: $categoryId}) \
+    ON CREATE SET c.name=$category_name  WITH c \
     MATCH (a:ARTICLE {id: $id}) \
-    CREATE (a)-[r:HAS_CATEGORY]->(c) RETURN a,r';
+    MERGE (a)-[r:HAS_CATEGORY]->(c) RETURN a,r';
   session
     .run(query, {
       id: article._id.toString(),
-      categoryId: article.parentcat._id.toString()
+      categoryId: article.parentcat._id.toString(),
+      category_name: article.parentcat.name.toString()
     })
     .then(result => {
       session.close();
       console.log('Article Category Relationship created.', article._id);
-      console.log(result.records[0]);
     })
     .catch(err => console.log(err));
 };
@@ -62,7 +63,7 @@ let articleSubCategoryRelationship = article => {
     'MERGE (c:CATEGORY {id: $categoryId}) \
     ON CREATE SET c.name=$subcategory_name  WITH c \
     MATCH (a:ARTICLE {id: $id}) \
-    CREATE (a)-[r:HAS_CATEGORY]->(c) RETURN a,r';
+    MERGE (a)-[r:HAS_CATEGORY]->(c) RETURN a,r';
   session
     .run(query, {
       id: article._id.toString(),
@@ -72,7 +73,6 @@ let articleSubCategoryRelationship = article => {
     .then(result => {
       session.close();
       console.log('Article SubCategory Relationship created.', article._id);
-      console.log(result.records[0]);
     })
     .catch(err => console.log(err));
 };
@@ -84,7 +84,7 @@ let articleAuthorRelationship = (author, articleId) => {
     query =
       'MERGE (au:AUTHOR {name: $author}) WITH au \
       MATCH (a:ARTICLE {id: $id}) \
-      CREATE (a)-[r:AUTHORED_BY]->(au) RETURN a, r';
+      MERGE (a)-[r:AUTHORED_BY]->(au) RETURN a, r';
   } else {
     query = 'MATCH (a:ARTICLE {id: $id}) RETURN a';
   }
@@ -96,7 +96,6 @@ let articleAuthorRelationship = (author, articleId) => {
     .then(result => {
       session.close();
       console.log('Article Author Relationship created.', articleId);
-      console.log(result.records[0]);
     })
     .catch(err => console.log(err));
 };
@@ -106,7 +105,7 @@ let articleProviderRelationship = article => {
   let query =
     'MERGE (p:PROVIDER {name: $provider}) WITH p \
     MATCH (a:ARTICLE {id: $id}) \
-    CREATE (a)-[r:PUBLISHED_BY {pubDate: $published_date}]->(p) RETURN a, r';
+    MERGE (a)-[r:PUBLISHED_BY {pubDate: $published_date}]->(p) RETURN a, r';
   session
     .run(query, {
       id: article._id.toString(),
@@ -116,7 +115,6 @@ let articleProviderRelationship = article => {
     .then(result => {
       session.close();
       console.log('Article Provider Relationship created.', article._id);
-      console.log(result.records[0]);
     })
     .catch(err => console.log(err));
 };

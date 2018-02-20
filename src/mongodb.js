@@ -14,7 +14,7 @@ MongoClient.connect(
     if (err) {
       throw err;
     }
-    db = client.db('manhattan');
+    db = client.db('heroku_0jg9kj1s');
   }
 );
 
@@ -31,7 +31,7 @@ let insertDocuments = (coll, docs) => {
 
 let insertDocument = (coll, doc) => {
   return new Promise((resolve, reject) => {
-    db.collection(coll).insertOne(doc, (err, result) => {
+    db.collection(coll).insert(doc, (err, result) => {
       if (err) {
         console.log('I got err: ', err);
         reject(err);
@@ -128,6 +128,21 @@ let updateDocumentWithUpsert = (coll, findQuery, updateQuery) => {
   });
 };
 
+let checkDocument = (coll, query) => {
+  return new Promise((resolve, reject) => {
+    db
+      .collection(coll)
+      .find(query, { _id: 1 })
+      .limit(1)
+      .toArray((err, docs) => {
+        if (err) {
+          reject(err);
+        }
+        resolve(docs);
+      });
+  });
+};
+
 module.exports = {
   insertDocuments,
   updateDocument,
@@ -135,5 +150,6 @@ module.exports = {
   insertDocument,
   deleteDocument,
   getDocumentsWithLimit,
-  updateDocumentWithUpsert
+  updateDocumentWithUpsert,
+  checkDocument
 };
