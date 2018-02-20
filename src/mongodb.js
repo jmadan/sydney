@@ -2,7 +2,7 @@
 
 const MongoClient = require('mongodb');
 const ObjectID = MongoClient.ObjectID;
-const DBURI = process.env.MONGODB_TEST_URI;
+const DBURI = process.env.MONGODB_URI;
 let db;
 
 MongoClient.connect(
