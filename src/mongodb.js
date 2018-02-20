@@ -3,6 +3,7 @@
 const MongoClient = require('mongodb');
 const ObjectID = MongoClient.ObjectID;
 const DBURI = process.env.MONGODB_URI;
+const DB_NAME = process.env.MONGODB_NAME;
 let db;
 
 MongoClient.connect(
@@ -14,7 +15,7 @@ MongoClient.connect(
     if (err) {
       throw err;
     }
-    db = client.db('heroku_0jg9kj1s');
+    db = client.db(DB_NAME);
   }
 );
 
