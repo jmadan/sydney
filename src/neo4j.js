@@ -1,8 +1,8 @@
 const neo4j = require('neo4j-driver').v1;
 
 const driver = neo4j.driver(
-  process.env.NEO4J_URL,
-  neo4j.auth.basic(process.env.NEO4J_USER, process.env.NEO4J_PASSWORD)
+  process.env.NEO4J_TEST_URL,
+  neo4j.auth.basic(process.env.NEO4J_TEST_USER, process.env.NEO4J_TEST_PASSWORD)
 );
 
 let createArticle = article => {
@@ -40,18 +40,19 @@ let createArticle = article => {
 let articleCategoryRelationship = article => {
   const session = driver.session();
   let query =
-    'MERGE (c:CATEGORY {id: $categoryId}) WITH c \
+    'MERGE (c:CATEGORY {id: $categoryId}) \
+    ON CREATE SET c.name=$category_name  WITH c \
     MATCH (a:ARTICLE {id: $id}) \
     MERGE (a)-[r:HAS_CATEGORY]->(c) RETURN a,r';
   session
     .run(query, {
       id: article._id.toString(),
-      categoryId: article.parentcat._id.toString()
+      categoryId: article.parentcat._id.toString(),
+      category_name: article.parentcat.name.toString()
     })
     .then(result => {
       session.close();
       console.log('Article Category Relationship created.', article._id);
-      console.log(result.records[0]);
     })
     .catch(err => console.log(err));
 };
@@ -72,7 +73,6 @@ let articleSubCategoryRelationship = article => {
     .then(result => {
       session.close();
       console.log('Article SubCategory Relationship created.', article._id);
-      console.log(result.records[0]);
     })
     .catch(err => console.log(err));
 };
@@ -96,7 +96,6 @@ let articleAuthorRelationship = (author, articleId) => {
     .then(result => {
       session.close();
       console.log('Article Author Relationship created.', articleId);
-      console.log(result.records[0]);
     })
     .catch(err => console.log(err));
 };
@@ -116,7 +115,6 @@ let articleProviderRelationship = article => {
     .then(result => {
       session.close();
       console.log('Article Provider Relationship created.', article._id);
-      console.log(result.records[0]);
     })
     .catch(err => console.log(err));
 };

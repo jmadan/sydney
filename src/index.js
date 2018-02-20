@@ -29,7 +29,7 @@ let initialjobs = new CronJob({
 });
 
 let fetchInitialFeeds = new CronJob({
-  cronTime: '43 22 * * *',
+  cronTime: '09 14 * * *',
   onTick: () => {
     console.log(
       'Fetching RSS feeds and saving them in feeds collection',
@@ -150,7 +150,7 @@ let classifyDocs = new CronJob({
 });
 
 let classifyDocsBasedOnTopic = new CronJob({
-  cronTime: '*/1 * * * *', //Seconds: 0-59, Minutes: 0-59, Hours: 0-23, Day of Month: 1-31, Months: 0-11 ,Day of Week: 0-6
+  cronTime: '*/30 * * * * *', //Seconds: 0-59, Minutes: 0-59, Hours: 0-23, Day of Month: 1-31, Months: 0-11 ,Day of Week: 0-6
   onTick: async () => {
     console.log('Initiating article classification based on Topic...');
     MongoDB.getDocuments('categories', {})
@@ -160,7 +160,7 @@ let classifyDocsBasedOnTopic = new CronJob({
           {
             $and: [{ status: 'unclassified' }, { topic: { $ne: 'All' } }]
           },
-          10
+          5
         );
         console.log('search result docs: ', docs.length);
         return docs.map(d => {
@@ -212,32 +212,32 @@ let classifyDocsBasedOnTopic = new CronJob({
               )
                 .then(response => {
                   console.log(response.value._id, response.value.topic);
-                  // Neo4j.createArticle(response.value).then(result => {
-                  //   // console.log(
-                  //   //   'Article created...',
-                  //   //   result.result.records[0].get('a').properties.id
-                  //   // );
-                  //   if (typeof response.value.author === 'object') {
-                  //     response.value.author.forEach(author => {
-                  //       Neo4j.articleAuthorRelationship(
-                  //         author,
-                  //         result.result.records[0].get('a').properties.id
-                  //       );
-                  //     });
-                  //   } else if (typeof response.value.author === 'string') {
-                  //     Neo4j.articleAuthorRelationship(
-                  //       response.value.author,
-                  //       result.result.records[0].get('a').properties.id
-                  //     );
-                  //   }
-                  //
-                  //   Neo4j.articleProviderRelationship(response.value);
-                  //   if (response.value.subcategory) {
-                  //     Neo4j.articleSubCategoryRelationship(response.value);
-                  //   } else {
-                  //     Neo4j.articleCategoryRelationship(response.value);
-                  //   }
-                  // });
+                  Neo4j.createArticle(response.value).then(result => {
+                    // console.log(
+                    //   'Article created...',
+                    //   result.result.records[0].get('a').properties.id
+                    // );
+                    if (typeof response.value.author === 'object' && response.value.author !== null && response.value.author.length > 0) {
+                      response.value.author.forEach(author => {
+                        Neo4j.articleAuthorRelationship(
+                          author,
+                          result.result.records[0].get('a').properties.id
+                        );
+                      });
+                    } else if (typeof response.value.author === 'string') {
+                      Neo4j.articleAuthorRelationship(
+                        response.value.author,
+                        result.result.records[0].get('a').properties.id
+                      );
+                    }
+
+                    Neo4j.articleProviderRelationship(response.value);
+                    if (response.value.subcategory) {
+                      Neo4j.articleSubCategoryRelationship(response.value);
+                    } else {
+                      Neo4j.articleCategoryRelationship(response.value);
+                    }
+                  });
                 })
                 .catch(err => console.log(err));
             }
@@ -262,9 +262,9 @@ let synapticTraining = new CronJob({
 
 function main() {
   // initialjobs.start();
-  fetchInitialFeeds.start();
-  moveFeedItems.start();
-  updateFeedItemContent.start();
+  // fetchInitialFeeds.start();
+  // moveFeedItems.start();
+  // updateFeedItemContent.start();
   // classifyDocs.stop();
   classifyDocsBasedOnTopic.start();
   // synapticTraining.start();
