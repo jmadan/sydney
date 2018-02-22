@@ -12,7 +12,10 @@ const lancasterStemmer = natural.LancasterStemmer;
 let getRSSFeedProviders = () => {
   return new Promise(function(resolve) {
     MongoDB.getDocuments('feedproviders', {
-      $and: [{status: { $in: ['active', 'Active', 'Inactive'] }}, {type: "JSON"}]
+      $and: [
+        { status: { $in: ['active', 'Active', 'Inactive'] } },
+        { type: 'JSON' }
+      ]
     }).then(providerList => {
       resolve({ list: providerList });
     });
@@ -31,155 +34,49 @@ let getFeedItems = provider => {
   return new Promise((resolve, reject) => {
     rp(options)
       .then(res => {
-        if(provider.type === "JSON"){
-          console.log(res)
+        if (provider.type === 'JSON') {
+          let response = JSON.parse(res);
+          response.articles.map(article => {
+            feedList.push({
+              title: article.title,
+              url: article.url,
+              description: article.description,
+              author: article.author,
+              status: 'pending body',
+              type: 'story',
+              pubDate: Date.parse(article.publishedAt),
+              provider: provider.name,
+              topic: provider.topic,
+              subtopic: provider.subtopic ? provider.subtopic : ''
+            });
+          });
+          resolve(feedList);
         } else {
-        let $ = cheerio.load(res, {
-          withDomLvl1: true,
-          normalizeWhitespace: true,
-          xmlMode: true,
-          decodeEntities: true
-        });
-        let lastBuildDate = Date.parse($('lastBuildDate').text());
-        switch (provider.name) {
-          case 'The Atlantic':
-            console.log('I am in the Atlantic');
-            $('entry').each(function() {
-              feedList.push({
-                title: $(this)
-                  .find('title')
-                  .text(),
-                url: $(this)
-                  .find('link')
-                  .attr('href'),
-                description: $(this)
-                  .find('summary')
-                  .text()
-                  .replace(/<[^>]*>/g, ''),
-                author: $(this)
-                  .find('author')
-                  .find('name')
-                  .text(),
-                status: 'pending body',
-                type: 'story',
-                pubDate: Date.parse(
-                  $(this)
-                    .find('published')
-                    .text()
-                ),
-                provider: provider.name,
-                topic: provider.topic,
-                subtopic: provider.subtopic ? provider.subtopic : ''
-              });
-            });
-            break;
-          case 'The Verge':
-            console.log('I am in the Verge');
-            $('entry').each(function() {
-              feedList.push({
-                title: $(this)
-                  .find('title')
-                  .text(),
-                url: $(this)
-                  .find('link')
-                  .attr('href'),
-                description: '',
-                author: $(this)
-                  .find('author')
-                  .find('name')
-                  .text(),
-                status: 'pending body',
-                type: 'story',
-                pubDate: Date.parse(
-                  $(this)
-                    .find('published')
-                    .text()
-                ),
-                provider: provider.name,
-                topic: provider.topic,
-                subtopic: provider.subtopic ? provider.subtopic : ''
-              });
-            });
-            break;
-          case 'Nature':
-            console.log('I am in Nature');
-            $('item').each(function() {
-              feedList.push({
-                title: $(this)
-                  .find('title')
-                  .text(),
-                url: $(this)
-                  .find('link')
-                  .text(),
-                description: $('content\\:encoded').text(),
-                author: '',
-                status: 'pending body',
-                type: 'story',
-                pubDate: null,
-                provider: provider.name,
-                topic: provider.topic,
-                subtopic: provider.subtopic ? provider.subtopic : ''
-              });
-            });
-            break;
-          default:
-            console.log('I am in the default');
-            if ($('item').length) {
-              $('item').each(function() {
+          let $ = cheerio.load(res, {
+            withDomLvl1: true,
+            normalizeWhitespace: true,
+            xmlMode: true,
+            decodeEntities: true
+          });
+          let lastBuildDate = Date.parse($('lastBuildDate').text());
+          switch (provider.name) {
+            case 'The Atlantic':
+              console.log('I am in the Atlantic');
+              $('entry').each(function() {
                 feedList.push({
                   title: $(this)
                     .find('title')
                     .text(),
                   url: $(this)
                     .find('link')
-                    .text(),
+                    .attr('href'),
                   description: $(this)
-                    .find('description')
-                    .text()
-                    .replace(/<[^>]*>/g, ''),
-                  img: $(this)
-                    .find('media\\:thumbnail')
-                    .attr('url'),
-                  author: $(this)
-                    .find('dc\\:creator')
-                    .text(),
-                  category: $(this)
-                    .find('category')
-                    .map((i, el) => {
-                      return $(el).text();
-                    })
-                    .get()
-                    .join(', '),
-                  keywords: $(this)
-                    .find('media\\:keywords')
-                    .text(),
-                  status: 'pending body',
-                  type: 'story',
-                  pubDate: Date.parse(
-                    $(this)
-                      .find('pubDate')
-                      .text()
-                  ),
-                  provider: provider.name,
-                  topic: provider.topic,
-                  subtopic: provider.subtopic ? provider.subtopic : ''
-                });
-              });
-            } else if ($('entry').length) {
-              $('event').each(function() {
-                feedList.push({
-                  title: $(this)
-                    .find('title')
-                    .text(),
-                  url: $(this)
-                    .find('id')
-                    .text(),
-                  description: $(this)
-                    .find('content')
+                    .find('summary')
                     .text()
                     .replace(/<[^>]*>/g, ''),
                   author: $(this)
                     .find('author')
+                    .find('name')
                     .text(),
                   status: 'pending body',
                   type: 'story',
@@ -193,12 +90,133 @@ let getFeedItems = provider => {
                   subtopic: provider.subtopic ? provider.subtopic : ''
                 });
               });
-            } else {
-              console.log('I am useless: ', provider.url);
-            }
+              break;
+            case 'The Verge':
+              console.log('I am in the Verge');
+              $('entry').each(function() {
+                feedList.push({
+                  title: $(this)
+                    .find('title')
+                    .text(),
+                  url: $(this)
+                    .find('link')
+                    .attr('href'),
+                  description: '',
+                  author: $(this)
+                    .find('author')
+                    .find('name')
+                    .text(),
+                  status: 'pending body',
+                  type: 'story',
+                  pubDate: Date.parse(
+                    $(this)
+                      .find('published')
+                      .text()
+                  ),
+                  provider: provider.name,
+                  topic: provider.topic,
+                  subtopic: provider.subtopic ? provider.subtopic : ''
+                });
+              });
+              break;
+            case 'Nature':
+              console.log('I am in Nature');
+              $('item').each(function() {
+                feedList.push({
+                  title: $(this)
+                    .find('title')
+                    .text(),
+                  url: $(this)
+                    .find('link')
+                    .text(),
+                  description: $('content\\:encoded').text(),
+                  author: '',
+                  status: 'pending body',
+                  type: 'story',
+                  pubDate: null,
+                  provider: provider.name,
+                  topic: provider.topic,
+                  subtopic: provider.subtopic ? provider.subtopic : ''
+                });
+              });
+              break;
+            default:
+              console.log('I am in the default');
+              if ($('item').length) {
+                $('item').each(function() {
+                  feedList.push({
+                    title: $(this)
+                      .find('title')
+                      .text(),
+                    url: $(this)
+                      .find('link')
+                      .text(),
+                    description: $(this)
+                      .find('description')
+                      .text()
+                      .replace(/<[^>]*>/g, ''),
+                    img: $(this)
+                      .find('media\\:thumbnail')
+                      .attr('url'),
+                    author: $(this)
+                      .find('dc\\:creator')
+                      .text(),
+                    category: $(this)
+                      .find('category')
+                      .map((i, el) => {
+                        return $(el).text();
+                      })
+                      .get()
+                      .join(', '),
+                    keywords: $(this)
+                      .find('media\\:keywords')
+                      .text(),
+                    status: 'pending body',
+                    type: 'story',
+                    pubDate: Date.parse(
+                      $(this)
+                        .find('pubDate')
+                        .text()
+                    ),
+                    provider: provider.name,
+                    topic: provider.topic,
+                    subtopic: provider.subtopic ? provider.subtopic : ''
+                  });
+                });
+              } else if ($('entry').length) {
+                $('event').each(function() {
+                  feedList.push({
+                    title: $(this)
+                      .find('title')
+                      .text(),
+                    url: $(this)
+                      .find('id')
+                      .text(),
+                    description: $(this)
+                      .find('content')
+                      .text()
+                      .replace(/<[^>]*>/g, ''),
+                    author: $(this)
+                      .find('author')
+                      .text(),
+                    status: 'pending body',
+                    type: 'story',
+                    pubDate: Date.parse(
+                      $(this)
+                        .find('published')
+                        .text()
+                    ),
+                    provider: provider.name,
+                    topic: provider.topic,
+                    subtopic: provider.subtopic ? provider.subtopic : ''
+                  });
+                });
+              } else {
+                console.log('I am useless: ', provider.url);
+              }
+          }
+          resolve(feedList);
         }
-      }
-        resolve(feedList);
       })
       .catch(err => reject(err));
   });
@@ -238,6 +256,7 @@ let saveRssFeed = items => {
       }
     });
     if (finalItems.length > 0) {
+      console.log(finalItems.length);
       MongoDB.insertDocuments('feed', finalItems).then(res => {
         console.log('item saved: ', res.result.ok);
       });

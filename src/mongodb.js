@@ -15,11 +15,7 @@ MongoClient.connect(
     if (err) {
       throw err;
     }
-<<<<<<< HEAD
-    db = client.db('heroku_0jg9kj1s');
-=======
     db = client.db(DB_NAME);
->>>>>>> df6924f9a156b3c4995d2b82b6e9e3a9fd71a256
   }
 );
 

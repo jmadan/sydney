@@ -42,10 +42,10 @@ let fetchInitialFeeds = new CronJob({
         return feed.getProviderFeed(providers);
       })
       .then(flist => {
-        console.log('got the feedlist...'. flist);
-        // flist.map(f => {
-        //   feed.saveRssFeed(f.data);
-        // });
+        console.log('got the feedlist...');
+        flist.map(f => {
+          feed.saveRssFeed(f.data);
+        });
       });
   },
   start: false
