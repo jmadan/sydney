@@ -438,7 +438,20 @@ let updateWithAuthorAndKeywords = item => {
           xmlMode: true,
           decodeEntities: true
         });
-        if (item.provider === 'MIT Technology Review') {
+        if (item.provider === 'The Verge') {
+          if (!item.description) {
+            item.description = $('meta[name="description"]').attr('content');
+          }
+          if (!item.keywords) {
+            item.keywords = $('meta[name="sailthru.tags"]').attr('content');
+          }
+          if (!item.author) {
+            item.author = $('meta[property="author"]').attr('content');
+          }
+          if (!item.img) {
+            item.img = $('meta[property="og:image"]').attr('content');
+          }
+        } else if (item.provider === 'MIT Technology Review') {
           if (!item.keywords) {
             item.keywords = $('meta[name="news_keywords"]').attr('content');
           }
