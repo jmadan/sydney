@@ -12,7 +12,7 @@ const lancasterStemmer = natural.LancasterStemmer;
 let getRSSFeedProviders = () => {
   return new Promise(function(resolve) {
     MongoDB.getDocuments('feedproviders', {
-      status: { $in: ['active', 'Active'] }
+      $and: [{status: { $in: ['active', 'Active', 'Inactive'] }}, {type: "JSON"}]
     }).then(providerList => {
       resolve({ list: providerList });
     });
@@ -20,7 +20,6 @@ let getRSSFeedProviders = () => {
 };
 
 let getFeedItems = provider => {
-  console.log(provider.url);
   let feedList = [];
   var options = {
     uri: provider.url,
@@ -32,6 +31,9 @@ let getFeedItems = provider => {
   return new Promise((resolve, reject) => {
     rp(options)
       .then(res => {
+        if(provider.type === "JSON"){
+          console.log(res)
+        } else {
         let $ = cheerio.load(res, {
           withDomLvl1: true,
           normalizeWhitespace: true,
@@ -195,6 +197,7 @@ let getFeedItems = provider => {
               console.log('I am useless: ', provider.url);
             }
         }
+      }
         resolve(feedList);
       })
       .catch(err => reject(err));
