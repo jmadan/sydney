@@ -7,9 +7,12 @@ const synaptic = require('./synaptic');
 const MongoDB = require('./mongodb');
 const ObjectID = require('mongodb').ObjectID;
 const Neo4j = require('./neo4j');
-const Raven = require('raven');
+// const Raven = require('raven');
+const Rollbar = require("rollbar");
 
-Raven.config(process.env.RAVEN_CONFIG).install();
+const rollbar = new Rollbar(process.env.ROLLBAR_TOKEN);
+
+// Raven.config(process.env.RAVEN_CONFIG).install();
 
 let initialjobs = new CronJob({
   cronTime: '5 0 * 1 *',
@@ -21,15 +24,15 @@ let initialjobs = new CronJob({
         initialSetup.createDictionary();
         initialSetup.createCategoryMap();
         initialSetup.createNetwork();
-        console.log('Initial commands executed...');
+        console.log('Initial commands executed...', new Date().toUTCString());
       })
-      .catch(e => console.log(e));
+      .catch(e => rollbar.log(e));
   },
   start: false
 });
 
 let fetchInitialFeeds = new CronJob({
-  cronTime: '* * * * *',
+  cronTime: '00 14 * * *',
   onTick: () => {
     console.log(
       'Fetching RSS feeds and saving them in feeds collection',
@@ -85,7 +88,7 @@ let updateFeedItemContent = new CronJob({
             res.map(r => {
               console.log('feed entry: ', r.url, r.keywords, r.author);
               if (r.error) {
-                console.log(r);
+                rollbar.log(r);
               } else {
                 feed.updateFeedItem(r).then(response => {
                   console.log(
@@ -97,7 +100,7 @@ let updateFeedItemContent = new CronJob({
             });
           })
           .catch(err => {
-            console.log(err);
+            rollbar.log(err);
           });
       });
   },
@@ -243,14 +246,14 @@ let classifyDocsBasedOnTopic = new CronJob({
                     }
                   });
                 })
-                .catch(err => console.log(err));
+                .catch(err => rollbar.log(err));
             }
           });
         } else {
           console.log('No Documents left to work on......');
         }
       })
-      .catch(e => console.log(e));
+      .catch(e => rollbar.log(e));
   },
   start: false
 });
@@ -267,10 +270,10 @@ let synapticTraining = new CronJob({
 function main() {
   // initialjobs.start();
   fetchInitialFeeds.start();
-  // moveFeedItems.start();
-  // updateFeedItemContent.start();
+  moveFeedItems.start();
+  updateFeedItemContent.start();
   // classifyDocs.stop();
-  // classifyDocsBasedOnTopic.start();
+  classifyDocsBasedOnTopic.start();
   // synapticTraining.start();
   console.log('Started them all....');
 }

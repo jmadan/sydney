@@ -40,6 +40,7 @@ let getFeedItems = provider => {
             feedList.push({
               title: article.title,
               url: article.url,
+              img: article.urlToImage,
               description: article.description,
               author: article.author,
               status: 'pending body',
@@ -323,6 +324,26 @@ let makeRequests = item => {
               resolve(item);
             });
             break;
+          case 'Axios':
+              item.title = $('meta[property="og:title"]').attr('content');
+              item.description = $('meta[property="og:description"]').attr('content')
+                ? he.decode($('meta[property="og:description"]').attr('content'))
+                : '';
+
+              item.keywords = $('meta[name="keywords"]').attr('content');
+              textract.fromUrl(item.url, function(error, text) {
+                if (text) {
+                  item.stemwords = lancasterStemmer.tokenizeAndStem(
+                    text.replace(/[0-9]/g, '')
+                  );
+                  item.itembody = text.replace(/\s+/gm, ' ').replace(/\W/g, ' ');
+                } else {
+                  item.stemwords = '';
+                  item.itembody = '';
+                }
+                resolve(item);
+              });
+              break;
           default:
             if (item.description === '') {
               item.description = $('meta[name="description"]').attr('content')

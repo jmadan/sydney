@@ -19,6 +19,7 @@
     "redis": "^2.8.0",
     "request": "^2.83.0",
     "request-promise": "^4.2.2",
+    "rollbar": "^2.3.9",
     "synaptic": "^1.1.4",
     "textract": "^2.2.0",
     "url": "^0.11.0"
