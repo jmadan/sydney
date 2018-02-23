@@ -1,18 +1,21 @@
-'use strict';
+"use strict";
 
-const CronJob = require('cron').CronJob;
-const feed = require('./feed');
-const initialSetup = require('./initialSetup');
-const synaptic = require('./synaptic');
-const MongoDB = require('./mongodb');
-const ObjectID = require('mongodb').ObjectID;
-const Neo4j = require('./neo4j');
-const Raven = require('raven');
+const CronJob = require("cron").CronJob;
+const feed = require("./feed");
+const initialSetup = require("./initialSetup");
+const synaptic = require("./synaptic");
+const MongoDB = require("./mongodb");
+const ObjectID = require("mongodb").ObjectID;
+const Neo4j = require("./neo4j");
+// const Raven = require('raven');
+const Rollbar = require("rollbar");
 
-Raven.config(process.env.RAVEN_CONFIG).install();
+const rollbar = new Rollbar(process.env.ROLLBAR_TOKEN);
+
+// Raven.config(process.env.RAVEN_CONFIG).install();
 
 let initialjobs = new CronJob({
-  cronTime: '5 0 * 1 *',
+  cronTime: "5 0 * 1 *",
   onTick: () => {
     initialSetup
       .distinctCategoryNumber()
@@ -21,28 +24,28 @@ let initialjobs = new CronJob({
         initialSetup.createDictionary();
         initialSetup.createCategoryMap();
         initialSetup.createNetwork();
-        console.log('Initial commands executed...');
+        console.log("Initial commands executed...", new Date().toUTCString());
       })
-      .catch(e => console.log(e));
+      .catch(e => rollbar.log(e));
   },
   start: false
 });
 
 let fetchInitialFeeds = new CronJob({
-  cronTime: '30 14 * * *',
+  cronTime: "00 14 * * *",
   onTick: () => {
     console.log(
-      'Fetching RSS feeds and saving them in feeds collection',
+      "Fetching RSS feeds and saving them in feeds collection",
       new Date().toUTCString()
     );
     feed
       .getRSSFeedProviders()
       .then(providers => {
-        console.log('got the providers');
+        console.log("got the providers");
         return feed.getProviderFeed(providers);
       })
       .then(flist => {
-        console.log('got the feedlist...');
+        console.log("got the feedlist...");
         flist.map(f => {
           feed.saveRssFeed(f.data);
         });
@@ -52,16 +55,16 @@ let fetchInitialFeeds = new CronJob({
 });
 
 let moveFeedItems = new CronJob({
-  cronTime: '*/1 * * * *',
+  cronTime: "*/1 * * * *",
   onTick: () => {
     console.log(
-      'fetching feed content and moving to feeditems...',
+      "fetching feed content and moving to feeditems...",
       new Date().toUTCString()
     );
-    feed.fetchItems('feed', { status: 'pending body' }, 25).then(result => {
+    feed.fetchItems("feed", { status: "pending body" }, 25).then(result => {
       result.map(item => {
         feed.moveUniqueFeedItem(item).then(response => {
-          console.log(response.result.ok, 'Document Moved and Deleted...');
+          console.log(response.result.ok, "Document Moved and Deleted...");
         });
       });
     });
@@ -70,26 +73,26 @@ let moveFeedItems = new CronJob({
 });
 
 let updateFeedItemContent = new CronJob({
-  cronTime: '*/2 * * * *',
+  cronTime: "*/2 * * * *",
   onTick: () => {
     console.log(
-      'Updating feed item content with keywords, author, url from article body...',
+      "Updating feed item content with keywords, author, url from article body...",
       new Date().toUTCString()
     );
     feed
-      .fetchItems('feeditems', { status: 'pending body' }, 10)
+      .fetchItems("feeditems", { status: "pending body" }, 10)
       .then(result => {
         feed
           .fetchFeedEntry(result)
           .then(res => {
             res.map(r => {
-              console.log('feed entry: ', r.url, r.keywords, r.author);
+              console.log("feed entry: ", r.url, r.keywords, r.author);
               if (r.error) {
-                console.log(r);
+                rollbar.log(r);
               } else {
                 feed.updateFeedItem(r).then(response => {
                   console.log(
-                    'Documents updated and saved: ',
+                    "Documents updated and saved: ",
                     response.result.ok
                   );
                 });
@@ -97,7 +100,7 @@ let updateFeedItemContent = new CronJob({
             });
           })
           .catch(err => {
-            console.log(err);
+            rollbar.log(err);
           });
       });
   },
@@ -106,7 +109,7 @@ let updateFeedItemContent = new CronJob({
 
 let saveClassifiedDocs = doc => {
   MongoDB.updateDocument(
-    'feeditems',
+    "feeditems",
     { _id: ObjectID(doc._id) },
     {
       $set: {
@@ -116,7 +119,7 @@ let saveClassifiedDocs = doc => {
     }
   ).then(result => {
     console.log(
-      'Document Updated:-  ',
+      "Document Updated:-  ",
       result.value._id,
       result.value.category,
       result.lastErrorObject.updatedExisting
@@ -125,11 +128,11 @@ let saveClassifiedDocs = doc => {
 };
 
 let classifyDocs = new CronJob({
-  cronTime: '*/3 * * * *',
+  cronTime: "*/3 * * * *",
   onTick: () => {
-    console.log('Initiating article classification ...');
+    console.log("Initiating article classification ...");
     feed
-      .fetchItems('feeditems', { status: 'classified' }, 15)
+      .fetchItems("feeditems", { status: "classified" }, 15)
       .then(doc => {
         if (doc.length > 0) {
           return synaptic.classifyDocs(doc[0]);
@@ -141,7 +144,7 @@ let classifyDocs = new CronJob({
         if (item) {
           saveClassifiedDocs(item);
         } else {
-          console.log('Nothing to Classify...');
+          console.log("Nothing to Classify...");
         }
       })
       .catch(e => console.log(e));
@@ -150,19 +153,19 @@ let classifyDocs = new CronJob({
 });
 
 let classifyDocsBasedOnTopic = new CronJob({
-  cronTime: '*/30 * * * * *', //Seconds: 0-59, Minutes: 0-59, Hours: 0-23, Day of Month: 1-31, Months: 0-11 ,Day of Week: 0-6
+  cronTime: "*/30 * * * * *", //Seconds: 0-59, Minutes: 0-59, Hours: 0-23, Day of Month: 1-31, Months: 0-11 ,Day of Week: 0-6
   onTick: async () => {
-    console.log('Initiating article classification based on Topic...');
-    MongoDB.getDocuments('categories', {})
+    console.log("Initiating article classification based on Topic...");
+    MongoDB.getDocuments("categories", {})
       .then(async cats => {
         let docs = await feed.fetchItems(
-          'feeditems',
+          "feeditems",
           {
-            $and: [{ status: 'unclassified' }, { topic: { $ne: 'All' } }]
+            $and: [{ status: "unclassified" }, { topic: { $ne: "All" } }]
           },
           10
         );
-        console.log('search result docs: ', docs.length);
+        console.log("search result docs: ", docs.length);
         return docs.map(d => {
           if (cats.find(c => c.name === d.topic)) {
             d.parentcat = cats.find(c => {
@@ -195,13 +198,13 @@ let classifyDocsBasedOnTopic = new CronJob({
           );
           docss.map(d => {
             if (d._id) {
-              console.log('before classifying updating the article: ', d._id);
+              console.log("before classifying updating the article: ", d._id);
               MongoDB.updateDocument(
-                'feeditems',
+                "feeditems",
                 { _id: ObjectID(d._id) },
                 {
                   $set: {
-                    status: 'classified',
+                    status: "classified",
                     parentcat: d.parentcat,
                     subcategory: d.subcategory,
                     author: d.author,
@@ -218,20 +221,20 @@ let classifyDocsBasedOnTopic = new CronJob({
                     //   result.result.records[0].get('a').properties.id
                     // );
                     if (
-                      typeof response.value.author === 'object' &&
+                      typeof response.value.author === "object" &&
                       response.value.author !== null &&
                       response.value.author.length > 0
                     ) {
                       response.value.author.forEach(author => {
                         Neo4j.articleAuthorRelationship(
                           author,
-                          result.result.records[0].get('a').properties.id
+                          result.result.records[0].get("a").properties.id
                         );
                       });
-                    } else if (typeof response.value.author === 'string') {
+                    } else if (typeof response.value.author === "string") {
                       Neo4j.articleAuthorRelationship(
                         response.value.author,
-                        result.result.records[0].get('a').properties.id
+                        result.result.records[0].get("a").properties.id
                       );
                     }
 
@@ -243,22 +246,22 @@ let classifyDocsBasedOnTopic = new CronJob({
                     }
                   });
                 })
-                .catch(err => console.log(err));
+                .catch(err => rollbar.log(err));
             }
           });
         } else {
-          console.log('No Documents left to work on......');
+          console.log("No Documents left to work on......");
         }
       })
-      .catch(e => console.log(e));
+      .catch(e => rollbar.log(e));
   },
   start: false
 });
 
 let synapticTraining = new CronJob({
-  cronTime: '01 11 * 1 *',
+  cronTime: "01 11 * 1 *",
   onTick: () => {
-    console.log('Triaing the Network Now.....');
+    console.log("Triaing the Network Now.....");
     synaptic.trainNetwork();
   },
   start: false
@@ -272,7 +275,7 @@ function main() {
   // classifyDocs.stop();
   classifyDocsBasedOnTopic.start();
   // synapticTraining.start();
-  console.log('Started them all....');
+  console.log("Started them all....");
 }
 
 main();
