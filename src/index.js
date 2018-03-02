@@ -162,7 +162,7 @@ let classifyDocsBasedOnTopic = new CronJob({
           {
             $and: [{ status: 'unclassified' }, { topic: { $ne: 'All' } }]
           },
-          10
+          1
         );
         console.log('search result docs: ', docs.length);
         return docs.map(d => {
@@ -268,9 +268,9 @@ let synapticTraining = new CronJob({
 
 function main() {
   // initialjobs.start();
-  fetchInitialFeeds.start();
-  moveFeedItems.start();
-  updateFeedItemContent.start();
+  // fetchInitialFeeds.start();
+  // moveFeedItems.start();
+  // updateFeedItemContent.start();
   // classifyDocs.stop();
   classifyDocsBasedOnTopic.start();
   // synapticTraining.start();

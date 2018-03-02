@@ -5,6 +5,7 @@ const natural = require('natural');
 const textract = require('textract');
 const MongoDB = require('./mongodb');
 const ObjectID = require('mongodb').ObjectID;
+const curljs = require('curljs');
 const he = require('he');
 
 const lancasterStemmer = natural.LancasterStemmer;
@@ -25,7 +26,7 @@ let getFeedItems = provider => {
     uri: provider.url,
     headers: {
       'User-Agent':
-        'Mozilla/5.0 (Macintosh; Intel Mac OS X x.y; rv:42.0) Gecko/20100101 Firefox/42.0'
+        'Mozilla/5.0 (Windows NT 6.3; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/38.0.2125.111 Safari/537.36'
     }
   };
   return new Promise((resolve, reject) => {
@@ -552,11 +553,25 @@ let moveUniqueFeedItem = item => {
   });
 };
 
+function redirectOn302(body, response, resolveWithFullResponse) {
+    if (response.statusCode === 302 || response.statusCode === 301) {
+        // Set the new url (this is the options object)
+        this.url = response.headers['location'];
+        // console.log(response);
+        return rp(options);
+
+    } else {
+        return resolveWithFullResponse ? response : body;
+    }
+}
+
 let updateWithAuthorAndKeywords = item => {
+  console.log(item.url);
+
   return new Promise((resolve, reject) => {
-    rp(item.url)
-      .then(res => {
-        let $ = cheerio.load(res, {
+    curljs(item.url, (err, data, stderr)=> {
+      if(err){console.log(err)} else {
+        let $ = cheerio.load(data, {
           withDomLvl1: true,
           normalizeWhitespace: true,
           xmlMode: true,
@@ -617,11 +632,8 @@ let updateWithAuthorAndKeywords = item => {
           }
         }
         resolve(item);
-      })
-      .catch(err => {
-        handleError(err, item);
-        reject({ errName: err.name, errCode: err.statusCode, item: item._id });
-      });
+      }
+    });
   });
 };
 
