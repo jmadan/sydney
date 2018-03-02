@@ -268,9 +268,9 @@ let synapticTraining = new CronJob({
 
 function main() {
   // initialjobs.start();
-  // fetchInitialFeeds.start();
-  // moveFeedItems.start();
-  // updateFeedItemContent.start();
+  fetchInitialFeeds.start();
+  moveFeedItems.start();
+  updateFeedItemContent.start();
   // classifyDocs.stop();
   classifyDocsBasedOnTopic.start();
   // synapticTraining.start();
