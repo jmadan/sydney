@@ -10,13 +10,13 @@ const he = require('he');
 
 const lancasterStemmer = natural.LancasterStemmer;
 
-let getRSSFeedProviders = () => {
+let getRSSFeedProviders = (rollbar) => {
   return new Promise(function(resolve) {
     MongoDB.getDocuments('feedproviders', {
       status: { $in: ['active', 'Active'] }
     }).then(providerList => {
       resolve({ list: providerList });
-    });
+    }).catch(e  => {rollbar.log(e);});
   });
 };
 
@@ -265,16 +265,16 @@ let saveRssFeed = items => {
   }
 };
 
-let fetchItems = (coll, query, limit) => {
+let fetchItems = (coll, query, limit, rollbar) => {
   return new Promise(resolve => {
     MongoDB.getDocumentsWithLimit(coll, query, limit).then(result => {
       resolve(result);
-    });
+    }).catch(e => rollbar.log(e));
   });
 };
 
 let makeRequests = item => {
-  console.log('making requests: ', item._id, item.url);
+  console.log('updating feeditem content - making requests: ', item._id, item.url);
   return new Promise((resolve, reject) => {
     rp(item.url)
       .then(res => {
@@ -361,6 +361,8 @@ let makeRequests = item => {
             break;
           case 'ESPN Cric Info':
             item.keywords = $('meta[name="keywords"]').attr('content');
+            item.img = $('meta[property="og:image"]').attr('content');
+            item.author = $('span[class="author"]').text();
             textract.fromUrl(item.url, function(error, text) {
               if (text) {
                 item.stemwords = lancasterStemmer.tokenizeAndStem(
@@ -374,15 +376,12 @@ let makeRequests = item => {
               resolve(item);
             });
             break;
-          case 'Axios':
-            item.title = $('meta[property="og:title"]').attr('content');
-            item.description = $('meta[property="og:description"]').attr(
-              'content'
-            )
-              ? he.decode($('meta[property="og:description"]').attr('content'))
-              : '';
-
+          case 'Telegraph':
             item.keywords = $('meta[name="keywords"]').attr('content');
+            if(item.description === ''){
+              item.description = $('meta[name="description"]').attr('content');
+            }
+            item.img = $('meta[property="og:image"]').attr('content');
             textract.fromUrl(item.url, function(error, text) {
               if (text) {
                 item.stemwords = lancasterStemmer.tokenizeAndStem(
@@ -396,8 +395,32 @@ let makeRequests = item => {
               resolve(item);
             });
             break;
-          case 'Four Four Two':
-            item.keywords = $('meta[name="keywords"]').attr('content');
+            case 'NY Times':
+              if(item.description === ''){
+                item.description = $('meta[name="description"]').attr('content');
+              }
+              item.keywords = $('meta[name="keywords"]').attr('content');
+              item.img = $('meta[property="og:image"]').attr('content');
+              textract.fromUrl(item.url, function(error, text) {
+                if (text) {
+                  item.stemwords = lancasterStemmer.tokenizeAndStem(
+                    text.replace(/[0-9]/g, '')
+                  );
+                  item.itembody = text.replace(/\s+/gm, ' ').replace(/\W/g, ' ');
+                } else {
+                  item.stemwords = '';
+                  item.itembody = '';
+                }
+                resolve(item);
+              });
+              break;
+          case 'The Verge':
+            item.description = he.decode(
+              $('meta[name="description"]').attr('content')
+            );
+            item.keywords = $('meta[name="sailthru.tags"]').attr('content');
+            item.author = $('meta[property="author"]').attr('content');
+            item.img = $('meta[property="og:image"]').attr('content');
             textract.fromUrl(item.url, function(error, text) {
               if (text) {
                 item.stemwords = lancasterStemmer.tokenizeAndStem(
@@ -411,8 +434,13 @@ let makeRequests = item => {
               resolve(item);
             });
             break;
-          case 'ESPN Cric Info':
-            item.keywords = $('meta[name="keywords"]').attr('content');
+          case 'Techcrunch':
+            item.description = he.decode(
+              $('meta[property="og:description"]').attr('content')
+            );
+            item.keywords = $('meta[name="sailthru.tags"]').attr('content');
+            item.author = $('meta[name="author"]').attr('content');
+            item.img = $('meta[property="og:image"]').attr('content');
             textract.fromUrl(item.url, function(error, text) {
               if (text) {
                 item.stemwords = lancasterStemmer.tokenizeAndStem(
@@ -426,17 +454,40 @@ let makeRequests = item => {
               resolve(item);
             });
             break;
+            case 'How to Geek':
+              item.description = he.decode(
+                $('meta[property="og:description"]').attr('content')
+              );
+              item.img = $('meta[property="og:image"]').attr('content');
+              textract.fromUrl(item.url, function(error, text) {
+                if (text) {
+                  item.stemwords = lancasterStemmer.tokenizeAndStem(
+                    text.replace(/[0-9]/g, '')
+                  );
+                  item.itembody = text.replace(/\s+/gm, ' ').replace(/\W/g, ' ');
+                } else {
+                  item.stemwords = '';
+                  item.itembody = '';
+                }
+                resolve(item);
+              });
+              break;
           default:
             if (item.description === '') {
-              item.description = $('meta[name="description"]').attr('content')
-                ? he.decode($('meta[name="description"]').attr('content'))
-                : '';
+              if($('meta[name="description"]').length > 0){
+                item.description = he.decode($('meta[name="description"]').attr('content'));
+              } else if($('meta[name="og:description"]').length > 0){
+                item.description = he.decode($('meta[property="og:description"]').attr('content'));
+              }
+
             }
             if (item.keywords === '') {
               if ($('meta[name="news_keywords"]').length > 0) {
                 item.keywords = $('meta[name="news_keywords"]').attr('content');
               } else if ($('meta[name="keywords"]').length > 0) {
                 item.keywords = $('meta[name="keywords"]').attr('content');
+              } else if ($('meta[property="keywords"]').length > 0) {
+                item.keywords = $('meta[property="keywords"]').attr('content');
               } else if ($('meta[name="article:tag"]').length > 0) {
                 item.keywords = $('meta[name="article:tag"]').attr('content');
               } else if ($('meta[name="sailthru.tags"]').length > 0) {
@@ -444,11 +495,19 @@ let makeRequests = item => {
               }
             }
             if (item.author === '') {
-              item.author = $('meta[name="author"]').attr('content');
+              if($('meta[name="author"]').length > 0){
+                item.author = $('meta[name="author"]').attr('content');
+              } else if ($('span[itemprop="name"]').length > 0){
+                item.author = $('meta[itemprop="name"]').text();
+              }
+
             }
-            if (item.img === undefined) {
+            if ($('meta[name="thumbnail"]').length > 0) {
+              item.img = $('meta[name="thumbnail"]').attr('content');
+            } else if ($('meta[property="og:image:url"]').length > 0) {
               item.img = $('meta[property="og:image:url"]').attr('content');
             }
+
             textract.fromUrl(item.url, function(error, text) {
               if (text) {
                 item.stemwords = lancasterStemmer.tokenizeAndStem(
@@ -479,7 +538,7 @@ let fetchFeedEntry = async items => {
   return itemsArray;
 };
 
-let updateFeedItem = item => {
+let updateFeedItem = (item, rollbar) => {
   return new Promise(function(resolve, reject) {
     MongoDB.updateDocumentWithUpsert(
       'feeditems',
@@ -507,16 +566,16 @@ let updateFeedItem = item => {
             resolve(response);
           })
           .catch(err => {
-            console.log(err);
+            rollbar.log(err);
           });
       })
       .catch(e => {
-        console.log(e);
+        rollbar.log(e);
       });
   });
 };
 
-let moveUniqueFeedItem = item => {
+let moveUniqueFeedItem = (item, rollbar) => {
   return new Promise(function(resolve, reject) {
     MongoDB.updateDocumentWithUpsert(
       'feeditems',
@@ -544,34 +603,40 @@ let moveUniqueFeedItem = item => {
             resolve(response);
           })
           .catch(err => {
-            console.log(err);
+            rollbar.log(err);
           });
       })
       .catch(e => {
-        console.log(e);
+        rollbar.log(e);
       });
   });
 };
 
 function redirectOn302(body, response, resolveWithFullResponse) {
-    if (response.statusCode === 302 || response.statusCode === 301) {
-        // Set the new url (this is the options object)
-        this.url = response.headers['location'];
-        // console.log(response);
-        return rp(options);
-
-    } else {
-        return resolveWithFullResponse ? response : body;
-    }
+  if (response.statusCode === 302 || response.statusCode === 301) {
+    // Set the new url (this is the options object)
+    this.url = response.headers['location'];
+    // console.log(response);
+    return rp(options);
+  } else {
+    return resolveWithFullResponse ? response : body;
+  }
 }
 
 let updateWithAuthorAndKeywords = item => {
-  console.log(item.url);
+  console.log('this is the url : ----- ', item.url);
+  // var curlOpts = curl.opts.follow_redirects().max_redirs(5);
+  // .connect_timeout(3);
 
   return new Promise((resolve, reject) => {
-    curljs(item.url, (err, data, stderr)=> {
-      if(err){console.log(err)} else {
-        let $ = cheerio.load(data, {
+    // curljs(item.url, (err, data, stderr) => {
+    //   console.log('I am IN..........');
+    //   if (err || stderr) {
+    //     console.log('this is the stderr: ------ ', err, stderr);
+    //   } else {
+    rp(item.url)
+      .then(res => {
+        let $ = cheerio.load(res, {
           withDomLvl1: true,
           normalizeWhitespace: true,
           xmlMode: true,
@@ -632,8 +697,11 @@ let updateWithAuthorAndKeywords = item => {
           }
         }
         resolve(item);
-      }
-    });
+      })
+      .catch(err => {
+        handleError(err, item);
+        console.log(err);
+      });
   });
 };
 
@@ -654,7 +722,6 @@ let handleError = (err, item) => {
 //==================
 
 module.exports = {
-  makeRequests,
   getProviderFeed,
   getFeedItems,
   getRSSFeedProviders,
