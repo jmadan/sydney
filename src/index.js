@@ -85,7 +85,7 @@ let updateFeedItemContent = new CronJob({
           .fetchFeedEntry(result)
           .then(res => {
             res.map(r => {
-              console.log('feed entry: ', r.url, r.keywords, r.author);
+              console.log('feed entry: ', r.url, r.keywords, r.author, r.img);
               if (r.error) {
                 rollbar.log(r);
               } else {
@@ -162,7 +162,7 @@ let classifyDocsBasedOnTopic = new CronJob({
           {
             $and: [{ status: 'unclassified' }, { topic: { $ne: 'All' } }]
           },
-          1
+          2
         );
         console.log('search result docs: ', docs.length);
         return docs.map(d => {
@@ -185,17 +185,10 @@ let classifyDocsBasedOnTopic = new CronJob({
       })
       .then(async documents => {
         if (documents.length) {
-          // let finalDocs = documents.filter(d => {
-          //   let dateLimit = new Date();
-          //   dateLimit.setDate(dateLimit.getDate() - 5);
-          //   if (new Date(d.pubDate) >= dateLimit) {
-          //     return d;
-          //   }
-          // });
-          let docss = await Promise.all(
-            documents.map(feed.updateWithAuthorAndKeywords)
-          );
-          docss.map(d => {
+          // let docss = await Promise.all(
+          //   documents.map(feed.updateWithAuthorAndKeywords)
+          // );
+          documents.map(d => {
             if (d._id) {
               console.log('before classifying updating the article: ', d._id);
               MongoDB.updateDocument(
