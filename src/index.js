@@ -31,14 +31,14 @@ let initialjobs = new CronJob({
 });
 
 let fetchInitialFeeds = new CronJob({
-  cronTime: '00 14 * * *',
+  cronTime: '00 16 * * *',
   onTick: () => {
     console.log(
       'Fetching RSS feeds and saving them in feeds collection',
       new Date().toUTCString()
     );
     feed
-      .getRSSFeedProviders()
+      .getRSSFeedProviders(rollbar)
       .then(providers => {
         console.log('got the providers');
         return feed.getProviderFeed(providers);
@@ -48,6 +48,8 @@ let fetchInitialFeeds = new CronJob({
         flist.map(f => {
           feed.saveRssFeed(f.data);
         });
+      }).catch(err => {
+        rollbar.log(err);
       });
   },
   start: false
@@ -61,11 +63,17 @@ let moveFeedItems = new CronJob({
       new Date().toUTCString()
     );
     feed.fetchItems('feed', { status: 'pending body' }, 25).then(result => {
+      if(result.length > 0){
       result.map(item => {
-        feed.moveUniqueFeedItem(item).then(response => {
+        feed.moveUniqueFeedItem(item, rollbar).then(response => {
           console.log(response.result.ok, 'Document Moved and Deleted...');
-        });
+        }).catch(e => {rollbar.log(e);});
       });
+    } else {
+        console.log('Nothing to move to feeditems....');
+      }
+    }).catch(err => {
+      rollbar.log(err);
     });
   },
   start: false
@@ -79,17 +87,17 @@ let updateFeedItemContent = new CronJob({
       new Date().toUTCString()
     );
     feed
-      .fetchItems('feeditems', { status: 'pending body' }, 10)
+      .fetchItems('feeditems', { status: 'pending body' }, 10, rollbar)
       .then(result => {
         feed
           .fetchFeedEntry(result)
           .then(res => {
             res.map(r => {
-              console.log('feed entry: ', r.url, r.keywords, r.author);
+              console.log('feed entry: ', r.url, r.keywords, r.author, r.img);
               if (r.error) {
                 rollbar.log(r);
               } else {
-                feed.updateFeedItem(r).then(response => {
+                feed.updateFeedItem(r, rollbar).then(response => {
                   console.log(
                     'Documents updated and saved: ',
                     response.result.ok
@@ -162,9 +170,8 @@ let classifyDocsBasedOnTopic = new CronJob({
           {
             $and: [{ status: 'unclassified' }, { topic: { $ne: 'All' } }]
           },
-          1
+          2
         );
-        console.log('search result docs: ', docs.length);
         return docs.map(d => {
           if (cats.find(c => c.name === d.topic)) {
             d.parentcat = cats.find(c => {
@@ -185,17 +192,10 @@ let classifyDocsBasedOnTopic = new CronJob({
       })
       .then(async documents => {
         if (documents.length) {
-          // let finalDocs = documents.filter(d => {
-          //   let dateLimit = new Date();
-          //   dateLimit.setDate(dateLimit.getDate() - 5);
-          //   if (new Date(d.pubDate) >= dateLimit) {
-          //     return d;
-          //   }
-          // });
-          let docss = await Promise.all(
-            documents.map(feed.updateWithAuthorAndKeywords)
-          );
-          docss.map(d => {
+          // let docss = await Promise.all(
+          //   documents.map(feed.updateWithAuthorAndKeywords)
+          // );
+          documents.map(d => {
             if (d._id) {
               console.log('before classifying updating the article: ', d._id);
               MongoDB.updateDocument(
