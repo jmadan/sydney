@@ -527,7 +527,7 @@ let makeRequests = item => {
           handleError(err, item);
         }
         // reject({ errName: err.name, errCode: err.statusCode, item: item._id });
-        reject({ item, error: true });
+        reject({ item, error: err });
         console.log('Item with error: ', item.url, err.statusCode);
       });
   });
