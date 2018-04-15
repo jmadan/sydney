@@ -7,16 +7,21 @@ const MongoDB = require('./mongodb');
 const ObjectID = require('mongodb').ObjectID;
 const curljs = require('curljs');
 const he = require('he');
-
+const PromisePool = require('es6-promise-pool');
+const poolConcurrency = 10;
 const lancasterStemmer = natural.LancasterStemmer;
 
-let getRSSFeedProviders = (rollbar) => {
+let getRSSFeedProviders = rollbar => {
   return new Promise(function(resolve) {
     MongoDB.getDocuments('feedproviders', {
       status: { $in: ['active', 'Active'] }
-    }).then(providerList => {
-      resolve({ list: providerList });
-    }).catch(e  => {rollbar.log(e);});
+    })
+      .then(providerList => {
+        resolve({ list: providerList });
+      })
+      .catch(e => {
+        rollbar.log(e);
+      });
   });
 };
 
@@ -33,6 +38,7 @@ let getFeedItems = provider => {
     rp(options)
       .then(res => {
         if (provider.type === 'JSON') {
+          console.log('RSS feed JSON: ', provider.name);
           let response = JSON.parse(res);
           response.articles.map(article => {
             feedList.push({
@@ -49,8 +55,11 @@ let getFeedItems = provider => {
               subtopic: provider.subtopic ? provider.subtopic : ''
             });
           });
-          resolve(feedList);
+          provider['data'] = feedList;
+          // resolve(feedList);
+          resolve(provider);
         } else {
+          console.log('RSS feed XML: ', provider.name);
           let $ = cheerio.load(res, {
             withDomLvl1: true,
             normalizeWhitespace: true,
@@ -60,7 +69,6 @@ let getFeedItems = provider => {
           let lastBuildDate = Date.parse($('lastBuildDate').text());
           switch (provider.name) {
             case 'The Atlantic':
-              console.log('I am in the Atlantic');
               $('entry').each(function() {
                 feedList.push({
                   title: $(this)
@@ -91,7 +99,6 @@ let getFeedItems = provider => {
               });
               break;
             case 'The Verge':
-              console.log('I am in the Verge');
               $('entry').each(function() {
                 feedList.push({
                   title: $(this)
@@ -119,7 +126,6 @@ let getFeedItems = provider => {
               });
               break;
             case 'Nature':
-              console.log('I am in Nature');
               $('item').each(function() {
                 feedList.push({
                   title: $(this)
@@ -140,7 +146,6 @@ let getFeedItems = provider => {
               });
               break;
             default:
-              console.log('I am in the default');
               if ($('item').length) {
                 $('item').each(function() {
                   feedList.push({
@@ -214,16 +219,12 @@ let getFeedItems = provider => {
                 console.log('I am useless: ', provider.url);
               }
           }
-          resolve(feedList);
+          provider['data'] = feedList;
+          resolve(provider);
         }
       })
       .catch(err => reject(err));
   });
-};
-
-let returnNew = async (val, index, arr) => {
-  val['data'] = await getFeedItems(val);
-  return val;
 };
 
 let updateProvidersTime = provider => {
@@ -234,19 +235,30 @@ let updateProvidersTime = provider => {
   ).then(response => {
     console.log(
       'response after updating time for feed parsing time: ',
+      provider.name,
       response.ok
     );
   });
 };
 
 let getProviderFeed = async providers => {
-  let flist = await Promise.all(providers.list.map(returnNew));
-  providers.list.forEach(updateProvidersTime);
-  return flist;
+  console.log('providers list length: ', providers.list.length);
+  const generatePromises = function*() {
+    for (let count = 0; count < providers.list.length; count++) {
+      console.log('count: ', count);
+      yield getFeedItems(providers.list[count]);
+    }
+  };
+
+  const promiseIterator = generatePromises();
+  let pool = new PromisePool(promiseIterator, poolConcurrency);
+  await pool.start();
+  return providers.list;
 };
 
 let saveRssFeed = items => {
   if (items.length > 0) {
+    console.log('I have some data....');
     let dateLimit = new Date();
     dateLimit.setDate(dateLimit.getDate() - 2);
     let finalItems = items.filter(i => {
@@ -259,6 +271,8 @@ let saveRssFeed = items => {
       MongoDB.insertDocuments('feed', finalItems).then(res => {
         console.log('item saved: ', res.result.ok);
       });
+    } else {
+      console.log('Date filter has filtered out everything....');
     }
   } else {
     console.log('No Data to Save');
@@ -267,14 +281,20 @@ let saveRssFeed = items => {
 
 let fetchItems = (coll, query, limit, rollbar) => {
   return new Promise(resolve => {
-    MongoDB.getDocumentsWithLimit(coll, query, limit).then(result => {
-      resolve(result);
-    }).catch(e => rollbar.log(e));
+    MongoDB.getDocumentsWithLimit(coll, query, limit)
+      .then(result => {
+        resolve(result);
+      })
+      .catch(e => rollbar.log(e));
   });
 };
 
 let makeRequests = item => {
-  console.log('updating feeditem content - making requests: ', item._id, item.url);
+  console.log(
+    'updating feeditem content - making requests: ',
+    item._id,
+    item.url
+  );
   return new Promise((resolve, reject) => {
     rp(item.url)
       .then(res => {
@@ -378,7 +398,7 @@ let makeRequests = item => {
             break;
           case 'Telegraph':
             item.keywords = $('meta[name="keywords"]').attr('content');
-            if(item.description === ''){
+            if (item.description === '') {
               item.description = $('meta[name="description"]').attr('content');
             }
             item.img = $('meta[property="og:image"]').attr('content');
@@ -395,25 +415,25 @@ let makeRequests = item => {
               resolve(item);
             });
             break;
-            case 'NY Times':
-              if(item.description === ''){
-                item.description = $('meta[name="description"]').attr('content');
+          case 'NY Times':
+            if (item.description === '') {
+              item.description = $('meta[name="description"]').attr('content');
+            }
+            item.keywords = $('meta[name="keywords"]').attr('content');
+            item.img = $('meta[property="og:image"]').attr('content');
+            textract.fromUrl(item.url, function(error, text) {
+              if (text) {
+                item.stemwords = lancasterStemmer.tokenizeAndStem(
+                  text.replace(/[0-9]/g, '')
+                );
+                item.itembody = text.replace(/\s+/gm, ' ').replace(/\W/g, ' ');
+              } else {
+                item.stemwords = '';
+                item.itembody = '';
               }
-              item.keywords = $('meta[name="keywords"]').attr('content');
-              item.img = $('meta[property="og:image"]').attr('content');
-              textract.fromUrl(item.url, function(error, text) {
-                if (text) {
-                  item.stemwords = lancasterStemmer.tokenizeAndStem(
-                    text.replace(/[0-9]/g, '')
-                  );
-                  item.itembody = text.replace(/\s+/gm, ' ').replace(/\W/g, ' ');
-                } else {
-                  item.stemwords = '';
-                  item.itembody = '';
-                }
-                resolve(item);
-              });
-              break;
+              resolve(item);
+            });
+            break;
           case 'The Verge':
             item.description = he.decode(
               $('meta[name="description"]').attr('content')
@@ -454,32 +474,35 @@ let makeRequests = item => {
               resolve(item);
             });
             break;
-            case 'How to Geek':
-              item.description = he.decode(
-                $('meta[property="og:description"]').attr('content')
-              );
-              item.img = $('meta[property="og:image"]').attr('content');
-              textract.fromUrl(item.url, function(error, text) {
-                if (text) {
-                  item.stemwords = lancasterStemmer.tokenizeAndStem(
-                    text.replace(/[0-9]/g, '')
-                  );
-                  item.itembody = text.replace(/\s+/gm, ' ').replace(/\W/g, ' ');
-                } else {
-                  item.stemwords = '';
-                  item.itembody = '';
-                }
-                resolve(item);
-              });
-              break;
+          case 'How to Geek':
+            item.description = he.decode(
+              $('meta[property="og:description"]').attr('content')
+            );
+            item.img = $('meta[property="og:image"]').attr('content');
+            textract.fromUrl(item.url, function(error, text) {
+              if (text) {
+                item.stemwords = lancasterStemmer.tokenizeAndStem(
+                  text.replace(/[0-9]/g, '')
+                );
+                item.itembody = text.replace(/\s+/gm, ' ').replace(/\W/g, ' ');
+              } else {
+                item.stemwords = '';
+                item.itembody = '';
+              }
+              resolve(item);
+            });
+            break;
           default:
             if (item.description === '') {
-              if($('meta[name="description"]').length > 0){
-                item.description = he.decode($('meta[name="description"]').attr('content'));
-              } else if($('meta[name="og:description"]').length > 0){
-                item.description = he.decode($('meta[property="og:description"]').attr('content'));
+              if ($('meta[name="description"]').length > 0) {
+                item.description = he.decode(
+                  $('meta[name="description"]').attr('content')
+                );
+              } else if ($('meta[name="og:description"]').length > 0) {
+                item.description = he.decode(
+                  $('meta[property="og:description"]').attr('content')
+                );
               }
-
             }
             if (item.keywords === '') {
               if ($('meta[name="news_keywords"]').length > 0) {
@@ -495,12 +518,11 @@ let makeRequests = item => {
               }
             }
             if (item.author === '') {
-              if($('meta[name="author"]').length > 0){
+              if ($('meta[name="author"]').length > 0) {
                 item.author = $('meta[name="author"]').attr('content');
-              } else if ($('span[itemprop="name"]').length > 0){
+              } else if ($('span[itemprop="name"]').length > 0) {
                 item.author = $('meta[itemprop="name"]').text();
               }
-
             }
             if ($('meta[name="thumbnail"]').length > 0) {
               item.img = $('meta[name="thumbnail"]').attr('content');
@@ -629,11 +651,6 @@ let updateWithAuthorAndKeywords = item => {
   // .connect_timeout(3);
 
   return new Promise((resolve, reject) => {
-    // curljs(item.url, (err, data, stderr) => {
-    //   console.log('I am IN..........');
-    //   if (err || stderr) {
-    //     console.log('this is the stderr: ------ ', err, stderr);
-    //   } else {
     rp(item.url)
       .then(res => {
         let $ = cheerio.load(res, {
@@ -719,7 +736,6 @@ let handleError = (err, item) => {
     });
   }
 };
-//==================
 
 module.exports = {
   getProviderFeed,
