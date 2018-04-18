@@ -322,10 +322,10 @@ function main() {
   // initialjobs.start();
   fetchInitialFeeds.start();
   // stopInitialFeedsJob.start();
-  // moveFeedItems.start();
-  // updateFeedItemContent.start();
+  moveFeedItems.start();
+  updateFeedItemContent.start();
   // // classifyDocs.stop();
-  // classifyDocsBasedOnTopic.start();
+  classifyDocsBasedOnTopic.start();
   // synapticTraining.start();
   console.log('Started them all....');
 }
