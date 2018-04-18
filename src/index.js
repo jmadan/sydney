@@ -13,6 +13,30 @@ const rollbar = new Rollbar(process.env.ROLLBAR_TOKEN);
 
 Raven.config(process.env.RAVEN_CONFIG).install();
 
+let fetchFeeds = async rollbar => {
+  feed
+    .getRSSFeedProviders(rollbar)
+    .then(providers => {
+      console.log('fetchInitialFeeds: Got the providers');
+      return feed.getProviderFeed(providers);
+    })
+    .then(flist => {
+      console.log(
+        'fetchInitialFeeds: Got the final Feed - Saving it to Feed',
+        flist.length
+      );
+      flist.forEach(async f => {
+        let result = await feed.updateProviderFeedDateAndTime(f);
+        if (result) {
+          feed.saveRssFeed(f.data);
+        }
+      });
+    })
+    .catch(err => {
+      rollbar.log(err);
+    });
+};
+
 let initialjobs = new CronJob({
   cronTime: '5 0 * 1 *',
   onTick: () => {
@@ -32,42 +56,13 @@ let initialjobs = new CronJob({
 
 let fetchInitialFeeds = new CronJob({
   //Seconds: 0-59, Minutes: 0-59, Hours: 0-23, Day of Month: 1-31, Months: 0-11, Day of Week: 0-6
-  cronTime: '01 00 * * *',
+  cronTime: '* */6 * * *',
   onTick: () => {
     console.log(
       'fetchInitialFeeds: Fetching RSS feeds and saving them in feeds collection',
       new Date().toUTCString()
     );
-    // if (moveFeedItems.running) {
-    //   console.log('stopping moveFeedItems job.....');
-    //   moveFeedItems.stop();
-    // }
-    // updateFeedItemContent.stop();
-    // classifyDocsBasedOnTopic.stop();
-    feed
-      .getRSSFeedProviders(rollbar)
-      .then(providers => {
-        console.log('fetchInitialFeeds: Got the providers');
-        return feed.getProviderFeed(providers);
-      })
-      .then(flist => {
-        console.log(
-          'fetchInitialFeeds: Got the final Feed - updating time and saving it to Feed'
-        );
-        flist.forEach(feed.updateProvidersTime);
-        flist.map(f => {
-          feed.saveRssFeed(f.data);
-        });
-      })
-      .catch(err => {
-        rollbar.log(err);
-      });
-  },
-  onComplete: () => {
-    console.log('All feeds fetched....');
-    moveFeedItems.start();
-    updateFeedItemContent.start();
-    classifyDocsBasedOnTopic.start();
+    fetchFeeds(rollbar);
   },
   start: false
 });
@@ -327,10 +322,10 @@ function main() {
   // initialjobs.start();
   fetchInitialFeeds.start();
   // stopInitialFeedsJob.start();
-  moveFeedItems.start();
-  updateFeedItemContent.start();
+  // moveFeedItems.start();
+  // updateFeedItemContent.start();
   // // classifyDocs.stop();
-  classifyDocsBasedOnTopic.start();
+  // classifyDocsBasedOnTopic.start();
   // synapticTraining.start();
   console.log('Started them all....');
 }

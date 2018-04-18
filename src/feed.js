@@ -227,20 +227,6 @@ let getFeedItems = provider => {
   });
 };
 
-let updateProvidersTime = provider => {
-  MongoDB.updateDocument(
-    'feedproviders',
-    { _id: ObjectID(provider._id) },
-    { $set: { lastPulled: new Date().toISOString() } }
-  ).then(response => {
-    console.log(
-      'response after updating time for feed parsing time: ',
-      provider.name,
-      response.ok
-    );
-  });
-};
-
 let getProviderFeed = async providers => {
   console.log('providers list length: ', providers.list.length);
   const generatePromises = function*() {
@@ -254,6 +240,28 @@ let getProviderFeed = async providers => {
   let pool = new PromisePool(promiseIterator, poolConcurrency);
   await pool.start();
   return providers.list;
+};
+
+let updateProviderFeedDateAndTime = provider => {
+  console.log(
+    'providers to be updated for Date and Time: ',
+    provider.name,
+    provider._id
+  );
+  return new Promise((resolve, reject) => {
+    MongoDB.updateDocument(
+      'feedproviders',
+      { _id: ObjectID(provider._id) },
+      { $set: { lastPulled: new Date().toISOString() } }
+    )
+      .then(res => {
+        console.log('Provider updated: ', res.ok);
+        resolve(true);
+      })
+      .catch(e => {
+        reject(e);
+      });
+  });
 };
 
 let saveRssFeed = items => {
@@ -746,5 +754,6 @@ module.exports = {
   fetchFeedEntry,
   updateFeedItem,
   updateWithAuthorAndKeywords,
-  moveUniqueFeedItem
+  moveUniqueFeedItem,
+  updateProviderFeedDateAndTime
 };
