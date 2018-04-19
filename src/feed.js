@@ -270,7 +270,7 @@ let saveRssFeed = items => {
     let dateLimit = new Date();
     dateLimit.setDate(dateLimit.getDate() - 2);
     let finalItems = items.filter(i => {
-      if (new Date(i.pubDate) >= dateLimit) {
+      if (new Date(i.pubDate) >= dateLimit && new Date(i.pubDate) < new Date().setDate(new Date().getDate() + 1)) {
         return i;
       }
     });
