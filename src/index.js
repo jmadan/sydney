@@ -56,7 +56,7 @@ let initialjobs = new CronJob({
 
 let fetchInitialFeeds = new CronJob({
   //Seconds: 0-59, Minutes: 0-59, Hours: 0-23, Day of Month: 1-31, Months: 0-11, Day of Week: 0-6
-  cronTime: '* */6 * * *',
+  cronTime: '0 */8 * * *',
   onTick: () => {
     console.log(
       'fetchInitialFeeds: Fetching RSS feeds and saving them in feeds collection',
