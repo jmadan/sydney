@@ -500,6 +500,23 @@ let makeRequests = item => {
               resolve(item);
             });
             break;
+          case 'Esquire':
+            item.keywords = $('meta[name="keywords"]').attr('content');
+            item.img = $('meta[property="og:image"]').attr('content');
+            item.author = 'Esquire';
+            textract.fromUrl(item.url, function(error, text) {
+              if (text) {
+                item.stemwords = lancasterStemmer.tokenizeAndStem(
+                  text.replace(/[0-9]/g, '')
+                );
+                item.itembody = text.replace(/\s+/gm, ' ').replace(/\W/g, ' ');
+              } else {
+                item.stemwords = '';
+                item.itembody = '';
+              }
+              resolve(item);
+            });
+            break;
           default:
             if (item.description === '') {
               if ($('meta[name="description"]').length > 0) {
