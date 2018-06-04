@@ -387,7 +387,7 @@ let makeRequests = item => {
               resolve(item);
             });
             break;
-          case 'ESPN Cric Info':
+          case 'ESPN Cric Info': //unsecure
             item.keywords = $('meta[name="keywords"]').attr('content');
             item.img = $('meta[property="og:image"]').attr('content');
             item.author = $('span[class="author"]').text();
@@ -553,6 +553,10 @@ let makeRequests = item => {
               item.img = $('meta[name="thumbnail"]').attr('content');
             } else if ($('meta[property="og:image:url"]').length > 0) {
               item.img = $('meta[property="og:image:url"]').attr('content');
+            } else if ($('meta[property="og:image"]').length > 0) {
+              item.img = $('meta[property="og:image"]').attr('content');
+            } else if ($('meta[property="og:image:secure_url"]').length > 0) {
+              item.img = $('meta[property="og:image:secure_url"').attr('content');
             }
 
             textract.fromUrl(item.url, function(error, text) {
