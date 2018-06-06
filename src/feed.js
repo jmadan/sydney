@@ -68,6 +68,42 @@ let getFeedItems = provider => {
           });
           let lastBuildDate = Date.parse($('lastBuildDate').text());
           switch (provider.name) {
+            case 'SiliconAngle':
+              $('entry').each(function() {
+                feedList.push({
+                  title: $(this)
+                    .find('title')
+                    .text(),
+                  url: $(this)
+                    .find('link')
+                    .text(),
+                  description: $(this)
+                    .find('summary')
+                    .text()
+                    .replace(/<[^>]*>/g, ''),
+                  author: $(this)
+                    .find('dc\\:creator')
+                    .text(),
+                  keywords: $(this)
+                    .find('category')
+                    .map((i, el) => {
+                      return $(el).text();
+                    })
+                    .get()
+                    .join(', '),
+                  status: 'pending body',
+                  type: 'story',
+                  pubDate: Date.parse(
+                    $(this)
+                      .find('pubDate')
+                      .text()
+                  ),
+                  provider: provider.name,
+                  topic: provider.topic,
+                  subtopic: provider.subtopic ? provider.subtopic : ''
+                });
+              });
+              break;
             case 'The Atlantic':
               $('entry').each(function() {
                 feedList.push({
