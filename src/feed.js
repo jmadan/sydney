@@ -224,7 +224,7 @@ let getFeedItems = provider => {
                   });
                 });
               } else if ($('entry').length) {
-                $('event').each(function() {
+                $('entry').each(function() {
                   feedList.push({
                     title: $(this)
                       .find('title')
